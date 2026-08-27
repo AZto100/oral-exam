@@ -1,0 +1,10 @@
+# Human-AI static oral exam TXT example
+TITLE=Basic Data Analysis TXT Example
+ID=basic-data-analysis-text-example
+LANG=en-ZA
+START=2026-08-27T08:00:00+02:00
+END=2027-12-31T23:59:59+02:00
+TIME_SOURCE=local
+Q=What is the difference between numerical data and categorical data?
+Q=Why can an outlier have a large effect on the mean?
+Q=What does variability tell you about a data set?

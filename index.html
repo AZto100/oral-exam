@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Human-AI Static Oral Exam</title>
+  <script src="coi-serviceworker.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main>
+  <section class="card" id="setupCard">
+    <h1>Oral Assessment</h1>
+    <p class="small">This assessment runs locally in your browser after the exam definition has loaded. Answer transcription uses the local Whisper/WASM speech path. No cloud speech fallback is permitted.</p>
+
+    <label for="examSelect">Assessment</label>
+    <select id="examSelect"><option value="">Loading assessments...</option></select>
+
+    <div class="actions">
+      <button id="loadSelectedBtn" type="button">Load Selected Assessment</button>
+      <label class="secondary" style="padding:10px 0 0">or load local exam file
+        <input id="examFile" type="file" accept=".json,.txt,application/json,text/plain">
+      </label>
+    </div>
+
+    <div id="examSummary" class="status">Select an assessment.</div>
+
+    <div class="row">
+      <div>
+        <label for="studentNumber">Student number</label>
+        <input id="studentNumber" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="8 digits">
+      </div>
+      <div>
+        <label for="firstName">First name</label>
+        <input id="firstName" autocomplete="off" placeholder="First name">
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="startBtn" type="button" disabled>Check Access & Start</button>
+    </div>
+    <div id="setupStatus" class="status">Load an assessment to continue.</div>
+  </section>
+
+  <section class="card hidden" id="examCard">
+    <div class="progress" id="progressText"></div>
+    <div class="question" id="questionText"></div>
+    <div class="actions">
+      <button id="speakQuestionBtn" type="button" class="secondary">Repeat Question</button>
+      <button id="micBtn" type="button">Start Speaking</button>
+      <button id="stopMicBtn" type="button" class="secondary" disabled>Stop Speaking & Transcribe</button>
+    </div>
+    <div id="speechStatus" class="status">Local Whisper/WASM will be prepared when the assessment starts. Speech audio never leaves this device.</div>
+
+    <label for="answerBox">Your recorded answer</label>
+    <textarea id="answerBox" spellcheck="true" placeholder="Your spoken answer will appear here. You may type corrections, then continue speaking."></textarea>
+    <div id="editStatus" class="small">Paste and drag/drop are disabled. You may type corrections.</div>
+
+    <div class="actions">
+      <button id="acceptBtn" type="button">Accept Answer & Next Question</button>
+    </div>
+  </section>
+
+  <section class="card hidden" id="completeCard">
+    <h2>Assessment complete</h2>
+    <p>Your submission file is prepared locally. Download it and submit it using the method specified by your course.</p>
+    <div id="completeSummary" class="status ok"></div>
+    <div class="actions">
+      <button id="downloadBtn" type="button">Download Submission File</button>
+    </div>
+  </section>
+</main>
+<script src="whisper-loader.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

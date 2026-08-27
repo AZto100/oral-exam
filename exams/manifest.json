@@ -1,0 +1,15 @@
+{
+  "format": "human-ai-static-oral-exam-manifest-v1",
+  "exams": [
+    {
+      "id": "basic-data-analysis-v1",
+      "title": "Basic Data Analysis Oral Assessment",
+      "file": "exams/basic-data-analysis-v1.json"
+    },
+    {
+      "id": "basic-data-analysis-text-example",
+      "title": "Basic Data Analysis TXT Example",
+      "file": "exams/basic-data-analysis-example.txt"
+    }
+  ]
+}

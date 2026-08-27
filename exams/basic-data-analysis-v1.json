@@ -1,0 +1,31 @@
+{
+  "format": "human-ai-static-oral-exam-v1",
+  "id": "basic-data-analysis-v1",
+  "title": "Basic Data Analysis Oral Assessment",
+  "version": "1.0",
+  "language": "en-ZA",
+  "instructions": "Answer each question in your own words. You may correct transcription errors before accepting each answer. The examiner does not provide hints or model answers.",
+  "access": {
+    "start": "2026-08-27T08:00:00+02:00",
+    "end": "2027-12-31T23:59:59+02:00",
+    "timeSource": "local",
+    "onTimeFailure": "deny"
+  },
+  "speech": {
+    "engine": "whisper-wasm",
+    "model": "ggml-base.en-q5_1.bin",
+    "allowTypedOnlyFallback": false
+  },
+  "questions": [
+    { "id": "Q1", "prompt": "In your own words, what is the difference between numerical data and categorical data? Give one example of each." },
+    { "id": "Q2", "prompt": "If you have a set of values, when would the mean be useful, and when might the median give a better description?" },
+    { "id": "Q3", "prompt": "What does the spread or variability of data tell you? Name one measure of spread if you know one." },
+    { "id": "Q4", "prompt": "Suppose one value in a data set is much larger than all the others. How could that outlier affect the mean and the median?" },
+    { "id": "Q5", "prompt": "When you look at a histogram, what features would you examine to understand the distribution of the data?" },
+    { "id": "Q6", "prompt": "Why do we often use a sample instead of measuring an entire population, and what can make a sample misleading?" },
+    { "id": "Q7", "prompt": "If two variables have a strong correlation, can we conclude that one causes the other? Explain your reasoning." },
+    { "id": "Q8", "prompt": "Imagine a scatter plot where points generally rise from left to right but are widely scattered. What would you say about the relationship?" },
+    { "id": "Q9", "prompt": "A data set has missing values and some obvious data-entry errors. What should you do before analysing it?" },
+    { "id": "Q10", "prompt": "You compare two groups and find that their averages are different. What else would you want to know before concluding that the groups are meaningfully different?" }
+  ]
+}

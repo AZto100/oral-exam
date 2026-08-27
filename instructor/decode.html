@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Human-AI Oral Exam Decoder</title>
+<style>
+body{font-family:system-ui,sans-serif;margin:0;background:#f5f6f8;color:#1f2937}main{max-width:900px;margin:auto;padding:24px}.card{background:#fff;border:1px solid #d8dee6;border-radius:12px;padding:20px}textarea,input,button{font:inherit}textarea{width:100%;min-height:380px;margin-top:12px}button{padding:10px 14px;margin:10px 8px 0 0}.status{margin-top:12px;padding:10px;background:#edf2f7}
+</style>
+</head>
+<body><main><div class="card">
+<h1>Oral Exam Decoder</h1>
+<p>Load a student submission JSON. The student number in the file is used to reverse the rotating Caesar shifts.</p>
+<input id="file" type="file" accept=".json,application/json">
+<button id="decode" type="button">Decode Answers</button>
+<button id="download" type="button" disabled>Download Decoded Copy</button>
+<div id="status" class="status">No file loaded.</div>
+<textarea id="output" readonly></textarea>
+</div></main>
+<script>
+"use strict";
+let submission=null,decoded=null;
+function caesar(text,num,dir){const s=[...num].map(Number);let p=0,o="";for(const ch of String(text)){const c=ch.charCodeAt(0);let b=null;if(c>=65&&c<=90)b=65;else if(c>=97&&c<=122)b=97;if(b===null){o+=ch;continue;}const sh=s[p%s.length]*dir;const n=((c-b+sh)%26+26)%26;o+=String.fromCharCode(b+n);p++;}return o;}
+document.getElementById("file").addEventListener("change",async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;try{submission=JSON.parse(await f.text());document.getElementById("status").textContent=`Loaded ${submission.studentNumber||"unknown"}.`;document.getElementById("output").value=JSON.stringify(submission,null,2);}catch(err){document.getElementById("status").textContent=err.message;}});
+document.getElementById("decode").addEventListener("click",()=>{if(!submission)return;const sn=String(submission.studentNumber||"");if(!/^\\d{8}$/.test(sn)){document.getElementById("status").textContent="Submission does not contain a valid 8-digit student number.";return;}decoded=JSON.parse(JSON.stringify(submission));decoded.responses=(submission.responses||[]).map(r=>({...r,answerDecoded:caesar(r.answerEncoded||"",sn,-1)}));document.getElementById("output").value=JSON.stringify(decoded,null,2);document.getElementById("download").disabled=false;document.getElementById("status").textContent="Answers decoded.";});
+document.getElementById("download").addEventListener("click",()=>{if(!decoded)return;const b=new Blob([JSON.stringify(decoded,null,2)],{type:"application/json"});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=`decoded-${decoded.examId||"oral"}-${decoded.studentNumber||"student"}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);});
+</script></body></html>

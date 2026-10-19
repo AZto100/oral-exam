@@ -1,76 +1,1852 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Human-AI Static Oral Exam</title>
-  <script src="coi-serviceworker.js"></script>
-  <link rel="stylesheet" href="styles.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chess Teacher - Stockfish, Maia &amp; Hands-free Voice</title>
+<style>
+:root{font-family:system-ui,Arial,sans-serif;color:#e9edf5;background:#111827;--sq:64px;--last-light:#d4d4d4;--last-dark:#737373}
+*{box-sizing:border-box}body{margin:0;padding:18px}.wrap{max-width:1250px;margin:auto}a{color:#9ed3ff}h1{margin:0;font-size:25px}.subtitle{margin:5px 0 12px}.controls{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0;align-items:center}
+button,select{font:inherit;background:#27364c;color:white;border:1px solid #56647a;border-radius:7px;padding:8px;cursor:pointer}button:hover{background:#3c516e}button:disabled{opacity:.45;cursor:default}button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid #73beff;outline-offset:2px}label{display:inline-flex;gap:6px;align-items:center}input[type=checkbox]{accent-color:#53e68c;width:17px;height:17px}
+.layout{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}.boardcolumn{flex:none;max-width:100%}.boardgroup{display:flex;gap:9px;align-items:stretch}.board{position:relative;isolation:isolate;display:grid;grid-template-columns:repeat(8,var(--sq));grid-template-rows:repeat(8,var(--sq));border:3px solid #65748b;touch-action:manipulation}
+.sq{width:var(--sq);height:var(--sq);position:relative;display:flex;justify-content:center;align-items:center;cursor:pointer;overflow:hidden}.light{background:#eeeed2}.dark{background:#769656}.sq.best{background:#45e37c}.sq.alternative{background:#f0d65b}
+/* Last-move greys have priority over hint fills. A hint keeps its coloured rim and label. */
+.sq.last-move.light{background:var(--last-light)}.sq.last-move.dark{background:var(--last-dark)}.sq.last-move.best{box-shadow:inset 0 0 0 4px #45e37c}.sq.last-move.alternative{box-shadow:inset 0 0 0 4px #f0d65b}.sq.selected{outline:4px solid #44a9ff;outline-offset:-4px}.sq:focus-visible{outline:3px solid #136cff;outline-offset:-3px}.board.computer-turn .sq{cursor:wait}
+.hint-lines{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;overflow:hidden}.hint-lines *{pointer-events:none}.hint-line,.hint-line-outline{fill:none;stroke-linecap:round;stroke-dasharray:0 10;vector-effect:non-scaling-stroke}.hint-line-outline{stroke:#172d3b;stroke-width:5.5;stroke-opacity:.85}.hint-line{stroke-width:3.5}.hint-line.best{stroke:#45e37c}.hint-line.alternative{stroke:#f0d65b}
+.piece{display:block;width:calc(var(--sq)*.92);height:calc(var(--sq)*.92);flex:none;z-index:1;pointer-events:none;user-select:none;filter:drop-shadow(0 1px 1px #0003)}.piece *{pointer-events:none}.piece.white{color:#fff;--piece-edge:#202020;--piece-detail:#202020}.piece.black{color:#080808;--piece-edge:#d5d9dd;--piece-detail:#e9edf1}.piece-body{fill:currentColor;stroke:var(--piece-edge);stroke-width:1.35;stroke-linecap:round;stroke-linejoin:round}.piece-detail{fill:none;stroke:var(--piece-detail);stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}.piece-eye{fill:var(--piece-detail);stroke:none}
+.moves{position:absolute;inset:auto 1px 2px;display:flex;flex-direction:column;align-items:center;gap:1px;z-index:3;pointer-events:none}.move{font-size:clamp(8px,calc(var(--sq)*.15),12px);font-weight:900;color:#102018;background:#fffffff0;border-radius:3px;padding:0 2px;white-space:nowrap}.coord{position:absolute;top:2px;left:3px;color:#23352b;font-size:10px;font-weight:700;opacity:.85}.last-move.dark .coord{color:#fff}
+.eval{width:26px;border:2px solid #65748b;position:relative;background:#171717}.whitefill{position:absolute;bottom:0;width:100%;background:#f4f4f4;height:50%;transition:height .4s}.evalnum{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-90deg);background:#334155;border-radius:4px;padding:2px 5px;font-size:12px;white-space:nowrap;z-index:1}.eval-label{position:absolute;left:50%;transform:translateX(-50%);font-size:9px;font-weight:800;z-index:1;padding:1px 2px;border-radius:2px}.eval-label.black-label{top:3px;color:white;background:#171717}.eval-label.white-label{bottom:3px;color:#171717;background:white}
+.side{flex:1;min-width:280px;max-width:460px}.panel{background:#1d293b;padding:14px;border-radius:10px;margin-bottom:12px}.panel h2{margin:0 0 10px;font-size:17px}.hintrow{display:flex;align-items:center;gap:7px;padding:8px 0;border-bottom:1px solid #39475b;font-size:14px}.rank{display:inline-block;min-width:24px;font-weight:800}.green{color:#53e68c}.yellow{color:#ffe36a}.chance{margin-left:auto;font-size:12px;white-space:nowrap;background:#314258;border-radius:4px;padding:3px 5px;font-variant-numeric:tabular-nums}.score{color:#afbed0;font-size:12px}.muted{color:#afbed0;font-size:13px}.status{margin:8px 0;color:#cbd5e1;min-height:24px}.history{max-height:140px;overflow:auto;line-height:1.7;white-space:pre-wrap}.seat{padding:5px 0 5px 35px;font-size:13px;font-weight:700;color:#afbed0}.lastmove-text{margin:9px 0;font-size:13px;color:#cbd5e1}.legend{line-height:1.5;max-width:600px}.grey-swatch{display:inline-block;width:12px;height:12px;border:1px solid #a0a0a0;vertical-align:-1px;border-radius:2px}.grey-swatch.light{background:var(--last-light)}.grey-swatch.dark{background:var(--last-dark)}#commentary{line-height:1.5}.settings{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px}.settings label{font-size:13px}details{font-size:13px;line-height:1.5}summary{cursor:pointer;color:#c9d6e8}details p{margin:9px 0}code{font-size:.94em}.strength-note{margin:0 0 10px;max-width:1000px;line-height:1.5}.control-disabled{opacity:.55}.selection-summary{padding:9px 11px;background:#26394d;border-left:3px solid #53e68c;border-radius:4px;font-size:13px;line-height:1.5;margin:8px 0}.preset-table{width:100%;border-collapse:collapse;margin:10px 0;font-variant-numeric:tabular-nums}.preset-table th,.preset-table td{padding:5px 6px;text-align:right;border-bottom:1px solid #39475b}.preset-table th:first-child,.preset-table td:first-child{text-align:left}.strength-details{margin-bottom:10px}.hintrow{flex-wrap:wrap}.choice-note{font-size:12px;line-height:1.5;color:#afbed0;margin:6px 0 0}#engine-retry{padding:5px 9px;margin-left:8px}[hidden]{display:none!important}
+@media(max-width:700px){body{padding:8px}.side{max-width:none;min-width:0;width:100%}.layout{gap:12px}.controls{gap:8px;font-size:13px}h1{font-size:23px}.panel{padding:12px}}
+
+/* Auto-fit: the chessboard has first claim on the viewport. No fixed board cap. */
+html{min-height:100%;background:#111827}
+body{padding:clamp(8px,1.1vw,16px)}
+.wrap{max-width:none;width:100%;margin:0 auto}
+.app-header{margin-bottom:8px}
+.titlebar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+h1{font-size:22px;line-height:1.2}
+.header-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.header-actions button{padding:5px 9px;font-size:13px}
+.controls{margin:9px 0 6px;gap:8px 12px}
+.controls label{font-size:14px}
+.controls button,.controls select{padding:6px 8px}
+.status{margin:5px 0 0;min-height:20px;font-size:13px;line-height:20px}
+.save-status{font-size:12px;color:#8de5b0;white-space:nowrap}
+.save-status.warning{color:#ffe36a}
+.layout{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start;min-width:0}
+.layout.with-sidebar{grid-template-columns:var(--boardcolumn-width) minmax(0,1fr)}
+.boardcolumn{display:flex;flex-direction:column;align-items:stretch;flex:none;min-width:0;max-width:100%;width:max-content;justify-self:center}
+.boardgroup{gap:8px;width:max-content;max-width:100%}
+.board{flex:none;width:calc(var(--sq)*8 + 6px);height:calc(var(--sq)*8 + 6px)}
+.sq{min-width:0;min-height:0}
+.eval{flex:none;width:26px}
+.seat{padding:4px 0 4px 34px;font-size:12px;line-height:18px;white-space:nowrap}
+.lastmove-text{margin:4px 0 0;padding-left:34px;font-size:12px;line-height:20px;height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.side{width:100%;min-width:0;max-width:none}
+.with-sidebar .side{max-height:var(--play-height);overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable;padding-right:3px;overscroll-behavior:contain}
+.panel{padding:12px;margin-bottom:10px}
+.panel:last-child{margin-bottom:0}
+.panel h2{font-size:16px;margin-bottom:8px}
+.panel p:last-child{margin-bottom:0}
+.panel details{overflow-wrap:anywhere}
+.hint-controls{display:flex;gap:10px 16px;align-items:center;flex-wrap:wrap;font-size:13px}
+.strength-note{margin:9px 0;font-size:12px}
+.strength-details{margin:0}
+.legend{max-width:none}
+.storage-help{font-size:12px;color:#afbed0;line-height:1.5}
+.footer{font-size:12px;line-height:1.5;margin:10px 0 0}
+.focus-board .side,.focus-board .footer{display:none}
+.focus-board .layout{grid-template-columns:minmax(0,1fr)}
+#focus[aria-pressed=true]{background:#385a72;border-color:#8fbcdb}
+#fullscreen[aria-pressed=true]{background:#385a72}
+#board-size{font-variant-numeric:tabular-nums}
+.coord{font-size:clamp(8px,calc(var(--sq)*.15),13px)}
+.move{font-size:clamp(7px,calc(var(--sq)*.15),16px)}
+@media(max-width:700px){
+  .layout{gap:12px}.controls{gap:7px 10px}.controls label{font-size:12px}
+  .controls button,.controls select{font-size:12px;padding:5px 6px}
+  h1{font-size:19px}.header-actions{gap:5px}.header-actions button{font-size:12px;padding:4px 6px}
+  .save-status{font-size:11px}.panel{padding:11px}
+  .seat{font-size:11px}.status{font-size:12px}
+}
+@media(max-height:500px){
+  body{padding:6px 8px}.app-header{margin-bottom:4px}h1{font-size:17px}
+  .controls{margin:5px 0 3px;gap:5px 8px}.controls label,.controls button,.controls select{font-size:12px}
+  .controls button,.controls select{padding:4px 6px}.status{margin:0;font-size:12px;line-height:17px;min-height:17px}
+  .seat{padding-top:2px;padding-bottom:2px;font-size:11px;line-height:15px}
+  .lastmove-text{margin-top:2px;line-height:16px;height:16px;font-size:11px}
+}
+/* A compact collapsible command bar stays available in Focus board mode. */
+#voice-toggle[aria-pressed=true]{background:#385a72;border-color:#8fbcdb}
+.voice-panel{background:#1d293b;border:1px solid #4b617a;border-radius:9px;padding:10px 12px;margin:7px 0}
+.voice-row{display:flex;align-items:center;flex-wrap:wrap;gap:7px 12px;font-size:13px}
+.voice-row + .voice-row{margin-top:8px}.voice-row button,.voice-row select{padding:5px 8px;font-size:13px}
+.voice-entry input{font:inherit;flex:1;min-width:180px;background:#101d2f;color:#fff;border:1px solid #61758e;border-radius:6px;padding:7px 9px}
+.voice-status{font-size:13px;margin:7px 0 0;color:#b7d6eb;line-height:1.5;overflow-wrap:anywhere}
+.voice-status.error{color:#ffd09a}.voice-status.ready{color:#8de5b0}
+#voice-details{margin-top:5px}#voice-details .voice-row{margin-top:9px}
+.mic-indicator{display:inline-block;width:9px;height:9px;border-radius:50%;background:#7d8ba0}
+.mic-indicator.listening{background:#ff7373;box-shadow:0 0 0 4px #ff737325}
+#voice-play:not(:disabled){background:#286345;border-color:#81d6a4}
+@media(max-width:700px){.voice-panel{padding:8px}.voice-row{gap:7px;font-size:12px}.voice-row button,.voice-row select{font-size:12px;max-width:100%}.voice-entry input{flex-basis:100%;min-width:0}.voice-status{font-size:12px}.voice-row label{max-width:100%;flex-wrap:wrap}}
+
+/* A spoken preview is a separate input aid, not an engine recommendation.
+   It overrides last-move greys on the destination only, even with hints off. */
+.sq.voice-preview,.sq.voice-preview.last-move{background:#45e37c;box-shadow:inset 0 0 0 3px #15803d}
+.sq.voice-preview .coord{color:#102018}
+.voice-preview-banner{margin:8px 0 0;padding:7px 10px;border:1px solid #45e37c;border-radius:6px;background:#183c2c;color:#c7ffda;font-size:13px;font-weight:650;line-height:1.5}
+#voice-live{font-variant-numeric:tabular-nums}
+</style>
 </head>
 <body>
-<main>
-  <section class="card" id="setupCard">
-    <h1>Oral Assessment</h1>
-    <p class="small">This assessment runs locally in your browser after the exam definition has loaded. Answer transcription uses the local Whisper/WASM speech path. No cloud speech fallback is permitted.</p>
+<div class="wrap">
+<header class="app-header" id="app-header">
+<div class="titlebar"><h1>&#9823; Chess Teacher</h1><div class="header-actions">
+<span class="save-status" id="save-status" role="status" aria-live="polite">Autosave starting...</span>
+<button id="focus" aria-pressed="false" title="Hide the teaching panels. Keep the board and main play controls.">Focus board</button>
+<button id="voice-toggle" type="button" aria-pressed="false" aria-controls="voice-panel" title="Optional voice input. Click-to-move is always available.">Voice (optional)</button><button id="fullscreen" aria-pressed="false" title="Use the full screen. Press Esc to leave." hidden>Full screen</button>
+</div></div>
+<div class="controls">
+<label>Engine <select id="model" aria-describedby="model-note"><option value="lite" selected>Stockfish Lite</option><option value="full">Stockfish Full</option><option value="maia">Maia-3 (human-like)</option></select></label>
+<label>Mode <select id="mode"><option value="practice" selected>Practice</option><option value="play">Play computer</option></select></label>
+<button id="new">New game</button><button id="undo">Undo</button><button id="flip" title="Rotate the board. In Play computer, you always play the bottom colour.">Flip board</button>
 
-    <label for="examSelect">Assessment</label>
-    <select id="examSelect"><option value="">Loading assessments...</option></select>
 
-    <div class="actions">
-      <button id="loadSelectedBtn" type="button">Load Selected Assessment</button>
-      <label class="secondary" style="padding:10px 0 0">or load local exam file
-        <input id="examFile" type="file" accept=".json,.txt,application/json,text/plain">
-      </label>
-    </div>
 
-    <div id="examSummary" class="status">Select an assessment.</div>
+<label title="Training difficulty presets, not calibrated FIDE ratings."><span id="rating-label">Approx. rating</span> <select id="rating" aria-describedby="rating-caveat">
+<option value="600">600</option><option value="700">700</option><option value="800">800</option><option value="1000">1000</option><option value="1200">1200</option><option value="1400">1400</option><option value="1600" selected>1600</option><option value="1800">1800</option><option value="2000">2000</option><option value="2200">2200</option><option value="2400">2400</option>
+</select></label>
+<label id="blunder-control" title="Play computer only. Checked: your weighted top-four choice. Unchecked: Stockfish's final best move at this preset's search limits."><input type="checkbox" id="allowBlunder" checked disabled> Allow Blunder</label>
+</div>
 
-    <div class="row">
-      <div>
-        <label for="studentNumber">Student number</label>
-        <input id="studentNumber" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="8 digits">
-      </div>
-      <div>
-        <label for="firstName">First name</label>
-        <input id="firstName" autocomplete="off" placeholder="First name">
-      </div>
-    </div>
+<p class="muted" id="model-note" style="margin:4px 0;line-height:1.4"></p>
+<div class="status"><span id="status" role="status" aria-live="polite">Loading chess rules...</span><button id="engine-retry" hidden>Retry engine</button></div>
+<section id="voice-panel" class="voice-panel" aria-label="Spoken chess moves" hidden>
+<div class="voice-row">
+<strong>Hands-free voice <small>(optional)</small></strong>
+<button id="voice-start" type="button">Start hands-free</button>
+<button id="voice-stop" type="button" disabled>Stop listening</button>
+<button id="voice-cancel" type="button" disabled>Clear preview</button>
+<span class="mic-indicator" id="voice-mic" aria-hidden="true"></span><span id="voice-live" class="muted" role="status">Microphone off</span>
+<button id="voice-play" type="button" disabled hidden>Play preview</button>
+</div>
+<p id="voice-preview-banner" class="voice-preview-banner" role="status" hidden></p>
+<p id="voice-status" class="voice-status" role="status" aria-live="polite">Mouse play is always available. To use voice, start once, say coordinates, then say "move" after the green preview appears.</p>
+<details id="voice-details"><summary>Voice settings, typed correction &amp; setup</summary>
+<div class="voice-row">
+<label>Speech <select id="voice-backend"><option value="whisper" selected>Whisper (local, oral-exam method)</option><option value="browser">Browser on-device (local only)</option></select></label>
+<label id="voice-language-wrap">Language <select id="voice-language"><option value="en-US">English (US)</option><option value="en-GB">English (UK)</option><option value="en-ZA">English (South Africa)</option></select></label>
+<button id="voice-prepare" type="button">Prepare voice</button>
+</div>
+<div class="voice-row voice-entry">
+<label for="voice-text">Heard / edit</label><input type="text" id="voice-text" placeholder="C2 to C4, or Charlie two to Charlie four" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="180" aria-describedby="voice-status">
+<label id="voice-promotion-wrap" hidden>Promote <select id="voice-promotion"><option value="">Choose piece</option><option value="q">Queen</option><option value="r">Rook</option><option value="b">Bishop</option><option value="n">Knight</option></select></label>
+</div>
+<div class="voice-row"><label id="voice-pause-wrap">Whisper pause <select id="voice-pause"><option value="650">Short (0.65 s)</option><option value="950" selected>Normal (0.95 s)</option><option value="1400">Long (1.4 s)</option></select></label></div>
+<p><strong>Click-to-move remains the default and always works.</strong> Hands-free is optional: start it once, say <strong>C two to C four</strong>, pause for the single green destination, then say <strong>move</strong> as a separate command. Say <strong>D two to D four</strong> to replace the preview; no piece moves until confirmed. Say <strong>cancel</strong> to clear the preview, or <strong>stop listening</strong> to turn the microphone off. Clicking the board clears the voice preview and takes priority.</p>
+<p>Phonetic coordinates (<strong>Charlie two to Charlie four</strong>), <strong>castle kingside</strong>, and <strong>E seven to E eight promote to queen</strong> are supported. A promotion without a piece first asks you to say <strong>queen</strong>, <strong>rook</strong>, <strong>bishop</strong> or <strong>knight</strong>; then confirm with <strong>move</strong>. In Play computer, speech controls only your bottom-side pieces. It waits through the computer turn and is ready again automatically.</p>
+<p><strong>Whisper:</strong> copy your oral-exam <code>wasm/stream.js</code> and its matching companion files into this site's <code>wasm/</code> folder, plus <code>models/ggml-base.en-q5_1.bin</code>. Alternatively run <code>py -3 install-voice.py</code> from this app folder. The helper <code>voice-coi-serviceworker.js</code> must be beside index.html. Prepare voice may reload this page once to enable local WASM threads; your game is saved first. No speech model loads until you request it.</p>
+<p><strong>Browser on-device:</strong> requires actual <code>processLocally</code> support and an installed language pack. Prepare voice checks/downloads the chosen pack. Unsupported browsers show an error rather than using a cloud recogniser. Both methods require microphone permission and HTTPS (GitHub Pages) or localhost.</p>
+<p>Whisper processes each short phrase locally after a pause. Wait until <strong>Listening</strong> is shown before your next command; audio spoken while it is processing or while the computer moves is discarded, not queued. Browser recognition processes final results only. There is no immediate-play option: coordinates always create a preview first. Ordinary moves keep hands-free enabled; New game, Undo, engine/side/settings changes, hiding the tab, closing this panel, or Escape turn it off. Microphone access never starts automatically on reload. Audio and transcripts are not saved or uploaded. <a href="VOICE_README.md">Voice setup and privacy notes</a>.</p>
+</details>
+</section>
 
-    <div class="actions">
-      <button id="startBtn" type="button" disabled>Check Access & Start</button>
-    </div>
-    <div id="setupStatus" class="status">Load an assessment to continue.</div>
-  </section>
+</header>
+<div class="layout" id="layout">
+<div class="boardcolumn">
+<div class="seat" id="top-seat">Black - top</div>
+<div class="boardgroup">
+<div class="eval" id="evaluation-bar" role="img" aria-label="Position evaluation: equal">
+<div class="whitefill" id="whitefill"></div><span class="eval-label black-label">B</span><span class="eval-label white-label">W</span><span class="evalnum" id="evalnum">0.00</span>
+</div>
+<div class="board" id="board" role="group" aria-label="Chessboard"></div>
+</div>
+<div class="seat" id="bottom-seat">White - bottom</div>
+<div class="lastmove-text" id="lastmove">No moves yet.</div>
 
-  <section class="card hidden" id="examCard">
-    <div class="progress" id="progressText"></div>
-    <div class="question" id="questionText"></div>
-    <div class="actions">
-      <button id="speakQuestionBtn" type="button" class="secondary">Repeat Question</button>
-      <button id="micBtn" type="button">Start Speaking</button>
-      <button id="stopMicBtn" type="button" class="secondary" disabled>Stop Speaking & Transcribe</button>
-    </div>
-    <div id="speechStatus" class="status">Local Whisper/WASM will be prepared when the assessment starts. Speech audio never leaves this device.</div>
+</div>
+<aside class="side" aria-label="Teaching panels">
+<div class="panel" id="display-settings"><h2>Hints &amp; display</h2>
+<div class="hint-controls"><label><input type="checkbox" id="hintsWhite" checked> Show white hints</label><label><input type="checkbox" id="hintsBlack" checked> Show black hints</label><label><input type="checkbox" id="talk" checked> Commentary</label></div>
+<p class="muted" id="board-size"></p><p class="muted legend" id="play-legend" hidden><span class="grey-swatch light"></span> / <span class="grey-swatch dark"></span> Grey = latest move's FROM and TO squares. Light squares become light grey; dark squares become dark grey. These remain visible when hints are off.</p>
+<details><summary>Saved game on this device</summary>
+<p class="storage-help">The board position, complete move history, engine choice, strength, mode, Allow Blunder, hint switches and board orientation save automatically in this browser. Reopening this same site restores them. If it is the computer's turn, it resumes after a fresh analysis.</p>
+<p class="storage-help">New game replaces the saved position but keeps your settings. This saves one game per browser profile and site folder, not a cloud backup. Private browsing or clearing site data may erase it. Localhost and GitHub Pages have separate saves.</p>
+</details></div>
 
-    <label for="answerBox">Your recorded answer</label>
-    <textarea id="answerBox" spellcheck="true" placeholder="Your spoken answer will appear here. You may type corrections, then continue speaking."></textarea>
-    <div id="editStatus" class="small">Paste and drag/drop are disabled. You may type corrections.</div>
-
-    <div class="actions">
-      <button id="acceptBtn" type="button">Accept Answer & Next Question</button>
-    </div>
-  </section>
-
-  <section class="card hidden" id="completeCard">
-    <h2>Assessment complete</h2>
-    <p>Your submission file is prepared locally. Download it and submit it using the method specified by your course.</p>
-    <div id="completeSummary" class="status ok"></div>
-    <div class="actions">
-      <button id="downloadBtn" type="button">Download Submission File</button>
-    </div>
-  </section>
-</main>
+<div class="panel" id="play-settings" hidden>
+<h2>Computer move selection</h2>
+<div class="settings">
+<label id="weighting-control">Weighting <select id="weighting"><option value="safe" selected>Score-gap (recommended)</option><option value="original">Your formula (guarded)</option></select></label>
+<label><span id="think-label">Think limit</span> <select id="think"><option value="1000">1 second</option><option value="3000" selected>3 seconds</option><option value="6000">6 seconds</option><option value="0">Preset budget only</option></select></label>
+</div>
+<p class="muted" id="computer-note">The computer plays the top colour. You play the bottom colour.</p>
+<p class="selection-summary" id="selection-summary"></p>
+<p class="choice-note" id="choice-note" hidden></p>
+<details><summary>Allow Blunder and move probabilities</summary>
+<div id="maia-behaviour" hidden><p><strong>Maia-3:</strong> checked samples its predicted human-move distribution over all legal moves. Unchecked chooses the highest-probability human move with no randomness. This is <strong>not</strong> a Stockfish best move and can still be a blunder. Stockfish bonuses and mate safeguards are not applied to Maia; hints and the bar still use Stockfish Lite.</p><p>The rating is supplied as both player and opponent Elo to Maia. It is not a FIDE measurement. The think limit caps the Stockfish teacher, not Maia's single neural-network inference.</p></div>
+<div id="sf-behaviour">
+<p><strong>Unchecked:</strong> use Stockfish's final <code>bestmove</code>, with no intentional random choice. This is the best move found within the selected search budget, not a promise that it is objectively perfect. The weighting selector is disabled.</p>
+<p><strong>Checked (default):</strong> preserve the existing weighted draw among the four best candidates. Allowing a lower-ranked move does not force a blunder, and the top four may all be good moves.</p>
+<p>Both choices retain your rank bonuses: <strong>20%, 10%, 5%, 0%</strong>, then normalise the preliminary weights to total 100%. Percentages mean <em>chance of selecting a move</em>, not chance of winning.</p>
+<p><strong>Score-gap:</strong> using scores in pawn units from the moving side's viewpoint, calculate <code>w = exp((score - bestScore) / 1.0)</code>. The preliminary weight is <code>rankBonus + w / sum(w)</code>. This keeps the score order intact with positive, zero, or negative evaluations.</p>
+<p><strong>Your formula:</strong> use <code>rankBonus + score / totalScore</code>. When the signed total is zero or negative, use the sum of absolute scores as the denominator; if all scores are zero, start with equal shares. If any preliminary weight is negative, add the same amount to all so the smallest becomes 0.05, then normalise. That 5% floor is <em>before</em> normalising, not a minimum final chance.</p>
+<p><strong>Mate safeguard:</strong> take an available immediate checkmate; otherwise favour forced-mate lines over non-mating lines. Avoid an engine-reported forced loss when another candidate avoids it. Within an all-mate pool, use mate distance rather than pretending mate is a centipawn score. Fewer than four legal moves are handled automatically.</p>
+<p>The computer waits for its search to end (depth, node budget or time limit) before choosing. A brief pause makes the reply visible. Changing engine or mode, flipping, undoing or starting a new game cancels a pending choice.</p>
+</div></details>
+</div>
+<div class="panel" id="maia-panel" hidden><h2>Maia: likely human moves</h2><div id="maia-suggestions"></div><p class="muted">Separate from the Stockfish best-move hints. These are move-likelihood predictions, not winning chances.</p></div>
+<div class="panel"><h2 id="suggestions-title">Best next moves</h2><div id="suggestions">Waiting for engine...</div><p class="muted" id="analysis-note"></p><p class="muted legend" id="hint-legend">Green = #1. Yellow = #2-4. Labels show rank and origin:destination. Dotted lines connect square centres. Hints apply only to the side whose turn it is.</p></div>
+<div class="panel"><h2>Teacher's commentary</h2><div id="commentary">Waiting for analysis.</div></div>
+<div class="panel"><h2>Move history</h2><div id="history" class="history">No moves yet.</div></div>
+<div class="panel"><h2>About strength settings</h2><p class="muted strength-note" id="rating-caveat"><strong>Training estimates, not measured FIDE ratings.</strong> Stockfish presets control search budgets. Maia receives the selected number as a human-play rating input. Neither is a measured FIDE strength; the Stockfish teacher uses its preset even when Maia is playing.</p>
+<details class="strength-details"><summary>Stockfish search presets and variety</summary>
+<p>These are hand-tuned search budgets, <strong>not a validated depth-to-FIDE conversion</strong>. The label 600 does not mean this engine has achieved a 600 FIDE rating. Actual strength depends on the position, engine build, thinking limit and move-selection policy. Proper rating calibration would need games against opponents with known ratings.</p>
+<p id="strength-summary"></p>
+<table class="preset-table" style="max-width:480px"><thead><tr><th>Training label</th><th>Depth ceiling</th><th>Node budget</th></tr></thead><tbody id="preset-rows"></tbody></table>
+<p>Stockfish's documented <code>UCI_Elo</code> starts at 1320 and is anchored to an engine rating list, not FIDE. Its built-in strength reduction deliberately chooses suboptimal moves. This board instead keeps that reduction <strong>off</strong>, so your Allow Blunder checkbox has sole control over intentional random move selection.</p>
+<p><strong>Same position, same best move?</strong> Often, yes. Fixed single-thread search is not shuffled automatically here. Allow Blunder adds variety by sampling the best four analysed moves, without changing the preset. With it off, the board always uses the engine's final best move; even equal-score ties are not deliberately randomised. Different human opening moves also lead to different games.</p>
+<p>The hash/search cache is cleared before each search so changing from a stronger to a weaker preset does not reuse deeper analysis. The optional time cap may stop a search before its full budget is reached. The completed depth is shown below the hints. These limits apply in Practice too, so low-level hints are not full-strength analysis.</p>
+</details></div>
+</aside>
+</div>
+<div class="panel footer"><details><summary>Engine setup, source &amp; licences</summary>
+<p>Keep the existing chess.js and Stockfish Lite files. For the extra engines, run <code>py -3 install-models.py</code> (Windows) or <code>python3 install-models.py</code> (WSL/Linux) once, from the app folder. Full Stockfish uses <code>engine/stockfish-19-single.js</code> and its matching WASM. Maia uses <code>models/maia3/maia3_simplified.onnx</code>, <code>models/maia3/all_moves.json</code> and the files in <code>vendor/ort/</code>.</p>
+<p>All play runs locally in your browser. Engines load only when needed. There is no automatic fallback to a different opponent when an engine fails: use Retry engine or choose another model. Switching models preserves the board and move history, but restarts analysis. This choice is autosaved.</p>
+<p>Maia model/version: the official CSSLab Maia-3 browser export, pinned to frontend commit <code>a6e52f5</code>. The 600-2400 choices are inputs to its rating-conditioned model, not independently measured FIDE ratings. Maia hints are listed separately; board colours and the bar remain Stockfish evaluations.</p>
+<p>This HTML is the editable application source. <a href="index.html" download>Download application source</a> &middot; <a href="THIRD_PARTY_NOTICES.md">Third-party notices and corresponding sources</a> &middot; <a href="README.md">Setup and test notes</a>. Preserve the relevant GPL/AGPL licences and source access when publishing, even for a free site.</p>
+</details></div>
+<noscript><p>JavaScript must be enabled to use this chessboard.</p></noscript>
+</div>
 <script src="whisper-loader.js"></script>
-<script src="app.js"></script>
+<script type="module">
+// Single-file UI; the rules library and the Stockfish worker remain local dependencies.
+let Chess;
+try {
+  ({ Chess } = await import('./vendor/chess.js'));
+} catch (error) {
+  document.getElementById('status').textContent = 'Cannot load vendor/chess.js. Keep your vendor folder beside index.html, and open this via your local web server or GitHub Pages (not file://).';
+  throw error;
+}
+window.Chess = Chess;
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+let game = new Chess();
+const names = {p:'pawn',n:'knight',b:'bishop',r:'rook',q:'queen',k:'king'};
+const BONUS = [0.20, 0.10, 0.05, 0];
+const AUTO_DELAY_MS = 650;
+const TEMPERATURE = 1.0; // Pawn units. Smaller = greater preference for stronger scores.
+// Official option semantics: https://official-stockfish.github.io/docs/stockfish-wiki/UCI-Protocol-and-Stockfish-Commands.html
+// Strength reduction: https://official-stockfish.github.io/docs/stockfish-wiki/Stockfish-FAQ.html
+// The following budgets are application design choices, NOT derived calibration data.
+// These are UNCALIBRATED training labels, not measured FIDE Elo. Never silently
+// pass them to UCI_Elo (which cannot represent 600 and would weaken best-only mode).
+const RATING_PRESETS = Object.freeze({
+  600:  Object.freeze({depth:1,  nodes:1500}),
+  700:  Object.freeze({depth:2,  nodes:3000}),
+  800:  Object.freeze({depth:3,  nodes:5000}),
+  1000: Object.freeze({depth:4,  nodes:10000}),
+  1200: Object.freeze({depth:6,  nodes:24000}),
+  1400: Object.freeze({depth:8,  nodes:60000}),
+  1600: Object.freeze({depth:10, nodes:150000}),
+  1800: Object.freeze({depth:12, nodes:350000}),
+  2000: Object.freeze({depth:14, nodes:800000}),
+  2200: Object.freeze({depth:16, nodes:1800000}),
+  2400: Object.freeze({depth:18, nodes:4000000})
+});
+const presetFor = rating => RATING_PRESETS[rating] || RATING_PRESETS[1600];
+const ratingLabel = () => Number($('rating').value);
+const allowBlunders = () => $('allowBlunder').checked;
+const numberText = number => Number(number).toLocaleString('en-US');
+let selected = null, flipped = false, recommendations = [], lastMove = null;
+let revision = 0, gameSerial = 1, busy = false, result = null, lastChoice = null;
+let autoTimer = null, drawFrame = null, sizeFrame = null, engineError = '', engine = null;
+let focusBoard = false, storageAvailable = true, storageWarning = '', lastSavedContent = null;
+const SAVE_VERSION = 1;
+// Directory-scoped key: /repo/ and /repo/index.html share a save; other Pages apps do not.
+const SAVE_KEY = 'chess-teacher:session:v1:' + new URL('.', location.href).pathname;
+const SELECT_SETTINGS = ['model','mode','rating','weighting','think','voice-backend','voice-language','voice-pause'];
+const CHECK_SETTINGS = ['allowBlunder','hintsWhite','hintsBlack','talk'];
+let legalMoves = [], moveHistory = [];
+let evaluation = {value:0, text:'0.00', description:'Equal position', known:false};
+const colourName = colour => colour === 'w' ? 'White' : 'Black';
+const isPlay = () => $('mode').value === 'play';
+const humanColour = () => flipped ? 'b' : 'w';
+const computerColour = () => flipped ? 'w' : 'b';
+const computerTurn = () => isPlay() && game.turn() === computerColour() && !game.isGameOver();
+const hintsFor = colour => $(colour === 'w' ? 'hintsWhite' : 'hintsBlack').checked;
+const hintsVisible = () => hintsFor(game.turn());
+const uciOf = move => move.from + move.to + (move.promotion || '');
+function refreshPositionCache() {
+  legalMoves = game.moves({verbose:true});
+  moveHistory = game.history({verbose:true});
+  lastMove = moveHistory.length ? moveHistory[moveHistory.length - 1] : null;
+}
+
+/** Save complete legal move history, not just the pieces on the board.
+ * Replaying it retains side to move, castling/en-passant rights, draw counters,
+ * repetition history and Undo. Never persist a pending engine move or timer.
+ */
+function savedSettings() {
+  const settings = {flipped, focusBoard};
+  for (const id of SELECT_SETTINGS) settings[id] = $(id).value;
+  for (const id of CHECK_SETTINGS) settings[id] = $(id).checked;
+  return settings;
+}
+function showSaveStatus(text, warning = false) {
+  const node = $('save-status');
+  node.textContent = text; node.classList.toggle('warning', warning);
+  node.title = warning ? storageWarning : 'Automatically saved in this browser for this site folder. Reopen the same address to resume.';
+}
+function saveSession() {
+  if (!storageAvailable) return false;
+  try {
+    const content = {settings:savedSettings(), moves:moveHistory.map(uciOf), fen:game.fen()};
+    const signature = JSON.stringify(content);
+    // A stale background tab must not overwrite another tab's newer save just
+    // because it closes. Only changed game/settings are written again.
+    if (signature === lastSavedContent) return true;
+    const state = {version:SAVE_VERSION, savedAt:new Date().toISOString(), ...content};
+    localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+    lastSavedContent = signature;
+    storageWarning = ''; showSaveStatus('Saved on this device');
+    return true;
+  } catch (error) {
+    storageAvailable = false;
+    storageWarning = 'Local saving is blocked or full. This game still works, but cannot be restored after closing.';
+    showSaveStatus('Saving unavailable', true);
+    return false;
+  }
+}
+function restoreSession() {
+  let raw;
+  try { raw = localStorage.getItem(SAVE_KEY); }
+  catch (error) {
+    storageAvailable = false;
+    storageWarning = 'This browser is blocking local storage. Settings and positions cannot be saved.';
+    showSaveStatus('Saving unavailable', true); return;
+  }
+  if (raw === null) { saveSession(); return; }
+  try {
+    if (raw.length > 500000) throw new Error('Saved game is too large.');
+    const state = JSON.parse(raw);
+    if (!state || state.version !== SAVE_VERSION || !Array.isArray(state.moves) || state.moves.length > 20000) {
+      throw new Error('Unsupported saved-game format.');
+    }
+    // Build a separate game first: bad/corrupt data must not partially change this board.
+    const restored = new Chess();
+    for (const uci of state.moves) {
+      if (typeof uci !== 'string' || !/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(uci)) throw new Error('Invalid saved move.');
+      const move = {from:uci.slice(0,2), to:uci.slice(2,4)};
+      if (uci.length === 5) move.promotion = uci[4];
+      if (!restored.move(move)) throw new Error('Illegal saved move.');
+    }
+    if (typeof state.fen !== 'string' || restored.fen() !== state.fen) throw new Error('Saved position does not match the moves.');
+    game = restored;
+    const settings = state.settings && typeof state.settings === 'object' ? state.settings : {};
+    for (const id of SELECT_SETTINGS) {
+      const value = String(settings[id]);
+      if ([...$(id).options].some(option => option.value === value)) $(id).value = value;
+    }
+    for (const id of CHECK_SETTINGS) if (typeof settings[id] === 'boolean') $(id).checked = settings[id];
+    if (typeof settings.flipped === 'boolean') flipped = settings.flipped;
+    if (typeof settings.focusBoard === 'boolean') focusBoard = settings.focusBoard;
+    lastSavedContent = JSON.stringify({settings:savedSettings(), moves:state.moves, fen:game.fen()});
+    showSaveStatus(state.moves.length ? 'Game restored' : 'Settings restored');
+  } catch (error) {
+    // Do not silently overwrite a damaged save at startup. A later deliberate
+    // move or settings change replaces it with the current valid state.
+    storageWarning = 'The stored game could not be restored. Starting safely from the standard position. A move or settings change will replace the old save.';
+    showSaveStatus('Saved game not restored', true);
+  }
+}
+function applyFocus() {
+  document.body.classList.toggle('focus-board', focusBoard);
+  $('focus').textContent = focusBoard ? 'Show panels' : 'Focus board';
+  $('focus').setAttribute('aria-pressed', String(focusBoard));
+  queueSize();
+}
+
+const PIECE_ARTWORK = Object.freeze({
+  "p": "<g class=\"piece-body\"><path d=\"M26 31h12c0 10 3 15 8 19H18c5-4 8-9 8-19Z\"/><path d=\"M25 25h14l3 7H22Z\"/><circle cx=\"32\" cy=\"17\" r=\"8\"/><path d=\"M18 49h28l5 8H13Z\"/></g><path class=\"piece-detail\" d=\"M19 53h26\"/>",
+  "r": "<g class=\"piece-body\"><path d=\"M20 27h24v20l6 5H14l6-5Z\"/><path d=\"M12 9h9v8h7V9h8v8h7V9h9v15l-6 6H18l-6-6Z\"/><path d=\"M15 50h34l5 7H10Z\"/></g><path class=\"piece-detail\" d=\"M19 25h26M22 45h20M17 53h30\"/>",
+  "n": "<g class=\"piece-body\"><path d=\"M17 51c0-7 4-12 11-19l-4-2-7 5-9-6 6-10 10-8 1-7 8 6c14 2 20 15 18 28l-2 13Z\"/><path d=\"M17 50h31l6 7H11Z\"/></g><g class=\"piece-detail\"><path d=\"m22 18 5-3M27 23l-9 5M35 15c9 6 11 17 6 27M32 34c-5 6-7 11-7 16M17 53h31\"/></g><circle cx=\"25.5\" cy=\"21.5\" r=\"1.6\" class=\"piece-eye\"/>",
+  "b": "<g class=\"piece-body\"><path d=\"M28 29h8c0 9 4 16 10 21H18c6-5 10-12 10-21Z\"/><path d=\"M32 9c-4 5-13 10-13 17 0 6 6 10 13 10s13-4 13-10c0-7-9-12-13-17Z\"/><circle cx=\"32\" cy=\"8\" r=\"3\"/><path d=\"M22 37h20l2 5H20Z\"/><path d=\"M18 49h28l6 8H12Z\"/></g><g class=\"piece-detail\"><path d=\"m35 17-7 12M20 53h24\"/></g>",
+  "q": "<g class=\"piece-body\"><path d=\"M13 17 20 28 21 11 28 25 32 7 36 25 43 11 44 28 51 17 44 42H20Z\"/><circle cx=\"12\" cy=\"15\" r=\"3.5\"/><circle cx=\"21\" cy=\"10\" r=\"3.5\"/><circle cx=\"32\" cy=\"7\" r=\"3.5\"/><circle cx=\"43\" cy=\"10\" r=\"3.5\"/><circle cx=\"52\" cy=\"15\" r=\"3.5\"/><path d=\"M21 40h22l2 9H19Z\"/><path d=\"M17 48h30l7 9H10Z\"/></g><g class=\"piece-detail\"><path d=\"M22 36h20M23 44h18M17 53h30\"/></g>",
+  "k": "<g class=\"piece-body\"><path d=\"M29 4h6v6h6v6h-6v8h-6v-8h-6v-6h6Z\"/><path d=\"M21 38c-3-6-10-9-10-17 0-8 11-10 17-1l4 7 4-7c6-9 17-7 17 1 0 8-7 11-10 17Z\"/><path d=\"M22 35h20l3 15H19Z\"/><path d=\"M17 48h30l7 9H10Z\"/></g><g class=\"piece-detail\"><path d=\"M32 26v9M23 40h18M17 53h30\"/></g>"
+});
+/** Pure probability calculation: candidates must be in descending engine rank. */
+function moveProbabilities(candidates, method = 'safe') {
+  const moves = candidates.slice(0, 4).map(x => ({...x}));
+  if (!moves.length) return {moves:[], note:''};
+  let eligible = moves.slice(), note = '';
+  const immediateMates = moves.filter(x => x.san?.includes('#'));
+  const winningMates = moves.filter(x => x.kind === 'mate' && x.mate > 0);
+  const avoidingMate = moves.filter(x => x.kind !== 'mate' || x.mate > 0);
+  if (immediateMates.length) {
+    eligible = immediateMates;
+    note = 'Immediate checkmate safeguard.';
+  } else if (winningMates.length) {
+    eligible = winningMates;
+    note = 'Forced-mate safeguard: choosing among winning mate lines.';
+  } else if (avoidingMate.length && avoidingMate.length < moves.length) {
+    eligible = avoidingMate;
+    note = 'Forced-loss safeguard: excluding lines with an engine-reported forced mate against this side.';
+  }
+  const matePool = eligible.every(x => x.kind === 'mate');
+  if (matePool && !note) note = 'All candidates lose by force: weighting toward a longer resistance.';
+  // Mate distance is a separate utility, not a fabricated pawn evaluation.
+  const scores = eligible.map(x => matePool
+    ? (x.mate > 0 ? -Math.abs(x.mate) : Math.abs(x.mate))
+    : (Number.isFinite(x.score) ? x.score : 0));
+  let shares;
+  if (method === 'original') {
+    const total = scores.reduce((a, b) => a + b, 0);
+    const absTotal = scores.reduce((a, b) => a + Math.abs(b), 0);
+    const denominator = total > 1e-9 ? total : absTotal;
+    shares = denominator > 1e-9 ? scores.map(s => s / denominator) : scores.map(() => 1 / scores.length);
+  } else {
+    const best = Math.max(...scores);
+    // Subtracting best prevents overflow; the clamp keeps tiny weights positive.
+    const weights = scores.map(s => Math.exp(Math.max(-700, (s - best) / TEMPERATURE)));
+    const total = weights.reduce((a, b) => a + b, 0);
+    shares = weights.map(w => w / total);
+  }
+  let preliminary = eligible.map((x, i) => (BONUS[x.rank - 1] || 0) + shares[i]);
+  const minimum = Math.min(...preliminary);
+  if (minimum < 0) {
+    const shift = 0.05 - minimum;
+    preliminary = preliminary.map(p => p + shift);
+  }
+  const total = preliminary.reduce((a, b) => a + b, 0);
+  const byMove = new Map(eligible.map((x, i) => [x.uci || uciOf(x), preliminary[i] / total]));
+  for (const move of moves) move.probability = byMove.get(move.uci || uciOf(move)) || 0;
+  return {moves, note};
+}
+/** Exact best-only selection has no sampling or mate-filter override. */
+function selectionProbabilities(candidates, allow, method = 'safe', bestUci = null) {
+  if (allow) return moveProbabilities(candidates, method);
+  const moves = candidates.slice(0, 4).map(x => ({...x, probability:0}));
+  const best = moves.find(x => x.uci === bestUci) || moves.find(x => x.rank === 1) || moves[0];
+  if (best) best.probability = 1;
+  return {moves, note:'Best-only: no deliberate randomisation.'};
+}
+function currentDistribution() {
+  return selectionProbabilities(recommendations, allowBlunders(), $('weighting').value, result?.bestUci);
+}
+
+/** Round displayed percentages to one decimal place while preserving a total of 100.0. */
+function percentageLabels(moves) {
+  const parts = moves.map((x, i) => {
+    const exact = x.probability * 1000;
+    return {i, units:Math.floor(exact), remainder:exact - Math.floor(exact)};
+  });
+  let missing = 1000 - parts.reduce((s, x) => s + x.units, 0);
+  for (const p of [...parts].sort((a, b) => b.remainder - a.remainder)) {
+    if (missing-- <= 0) break;
+    p.units++;
+  }
+  return parts.map(p => (p.units / 10).toFixed(1) + '%');
+}
+function randomUnit() {
+  if (globalThis.crypto?.getRandomValues) {
+    const value = new Uint32Array(1);
+    crypto.getRandomValues(value);
+    return value[0] / 4294967296;
+  }
+  return Math.random();
+}
+function sampleMove(moves, random = randomUnit()) {
+  const eligible = moves.filter(x => x.probability > 0);
+  if (!eligible.length) return null;
+  let cumulative = 0;
+  for (const move of eligible) {
+    cumulative += move.probability;
+    if (random < cumulative) return move;
+  }
+  return eligible[eligible.length - 1]; // Floating-point rounding protection.
+}
+
+// Maia-3 browser-export interface checked against CSSLab's public implementation:
+// https://github.com/CSSLab/maia-platform-frontend/tree/a6e52f5c811ee18863cb2f0e81f2433a5b9905de
+// This runner intentionally uses local URLs, one WASM thread, and a separate worker.
+// No CDN, cloud inference, Next.js, React or extra app-JS file is required at runtime.
+const MODEL_CONFIGS = Object.freeze({
+  lite:{name:'Stockfish Lite', path:'engine/stockfish-19-lite-single.js', bootTimeout:45000},
+  full:{name:'Stockfish Full', path:'engine/stockfish-19-single.js', bootTimeout:180000},
+  maia:{name:'Maia-3', path:'engine/stockfish-19-lite-single.js', bootTimeout:45000}
+});
+const modelId = () => Object.hasOwn(MODEL_CONFIGS, $('model').value) ? $('model').value : 'lite';
+const modelName = () => MODEL_CONFIGS[modelId()].name;
+const isMaia = () => modelId() === 'maia';
+const teacherName = () => modelId() === 'full' ? 'Stockfish Full' : 'Stockfish Lite';
+let maiaEngine = null, maiaResult = null, maiaBusy = false, maiaError = '', engineEpoch = 0;
+
+// Self-contained worker function. Serialised into a Blob below, so the application
+// remains one HTML file. The runtime and model files are external *local* assets.
+function maiaWorkerMain() {
+  'use strict';
+  let session = null, indices = null;
+  const notify = text => self.postMessage({type:'status', text});
+  const mirrorUci = move => move[0] + (9 - Number(move[1])) + move[2] + (9 - Number(move[3])) + move.slice(4);
+  function encode(fen) {
+    const fields = fen.split(' '), black = fields[1] === 'b';
+    if (!['w','b'].includes(fields[1])) throw new Error('Invalid side to move.');
+    const rows = fields[0].split('/'), tensor = new Float32Array(768);
+    if (rows.length !== 8) throw new Error('Invalid board rows.');
+    rows.forEach((row, rowIndex) => {
+      let file = 0;
+      for (const ch of row) {
+        if (/^[1-8]$/.test(ch)) {file += Number(ch); continue;}
+        const type = 'pnbrqk'.indexOf(ch.toLowerCase());
+        if (type < 0 || file > 7) throw new Error('Invalid piece in position.');
+        const whitePiece = ch === ch.toUpperCase();
+        const channel = type + ((black ? !whitePiece : whitePiece) ? 0 : 6);
+        const rankIndex = black ? rowIndex : 7 - rowIndex;
+        tensor[(rankIndex * 8 + file) * 12 + channel] = 1;
+        file++;
+      }
+      if (file !== 8) throw new Error('Invalid board width.');
+    });
+    return tensor;
+  }
+  async function checkedFetch(url) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(new URL(url).pathname + ': HTTP ' + res.status + '. Run install-models.py in the app folder.');
+    if ((res.headers.get('content-type') || '').includes('text/html')) throw new Error('Server returned HTML instead of ' + new URL(url).pathname);
+    return res;
+  }
+  async function loadBytes(url) {
+    const response = await checkedFetch(url);
+    if (!response.body?.getReader) return new Uint8Array(await response.arrayBuffer());
+    const total = Number(response.headers.get('content-length')) || 0, chunks = [];
+    const reader = response.body.getReader(); let length = 0, last = 0;
+    while (true) {
+      const {value, done} = await reader.read(); if (done) break;
+      length += value.length; chunks.push(value);
+      if (length > 200 * 1024 * 1024) throw new Error('Unexpectedly large Maia model; expected the pinned browser export.');
+      if (performance.now() - last > 250) {
+        notify('Loading Maia model: ' + (length / 1048576).toFixed(1) + ' MiB' + (total ? ' / ' + (total / 1048576).toFixed(1) : ''));
+        last = performance.now();
+      }
+    }
+    const bytes = new Uint8Array(length); let offset = 0;
+    for (const chunk of chunks) {bytes.set(chunk, offset); offset += chunk.length;}
+    return bytes;
+  }
+  let queue = Promise.resolve();
+  self.onmessage = event => {
+    // ONNX sessions must not receive overlapping inference runs.
+    queue = queue.then(async () => {
+      const msg = event.data;
+      try {
+        if (msg.type === 'init') {
+          notify('Loading local Maia runtime...');
+          importScripts(msg.runtime);
+          ort.env.wasm.numThreads = 1;
+          ort.env.wasm.proxy = false;
+          ort.env.wasm.wasmPaths = msg.wasmPath;
+          const mapping = await (await checkedFetch(msg.mapping)).json();
+          const values = Object.values(mapping);
+          if (values.length !== 4352 || new Set(values).size !== 4352 ||
+              values.some(x => !Number.isInteger(x) || x < 0 || x >= 4352)) {
+            throw new Error('Wrong Maia move mapping. Use all_moves.json from the supplied installer.');
+          }
+          indices = mapping;
+          const bytes = await loadBytes(msg.model);
+          if (bytes.length < 1000000 || new TextDecoder().decode(bytes.subarray(0,80)).startsWith('version https://git-lfs')) {
+            throw new Error('Maia model is incomplete or a Git LFS pointer, not ONNX model data.');
+          }
+          notify('Initialising Maia neural network...');
+          session = await ort.InferenceSession.create(bytes, {executionProviders:['wasm'], graphOptimizationLevel:'all'});
+          if (!['tokens','elo_self','elo_oppo'].every(x => session.inputNames.includes(x)) || !session.outputNames.includes('logits_move')) {
+            throw new Error('Incompatible Maia model interface. Use the pinned Maia-3 browser export.');
+          }
+          self.postMessage({type:'ready'});
+        } else if (msg.type === 'predict') {
+          if (!session || !indices) throw new Error('Maia is not ready.');
+          const black = msg.fen.split(' ')[1] === 'b', feeds = {
+            tokens:new ort.Tensor('float32', encode(msg.fen), [1,64,12]),
+            elo_self:new ort.Tensor('float32', Float32Array.of(msg.rating), [1]),
+            elo_oppo:new ort.Tensor('float32', Float32Array.of(msg.rating), [1])
+          };
+          let outputs;
+          try {
+            outputs = await session.run(feeds);
+            const logits = outputs.logits_move.data;
+            if (logits.length !== 4352) throw new Error('Unexpected Maia policy size: ' + logits.length);
+            const moves = msg.legal.map(uci => {
+              const index = indices[black ? mirrorUci(uci) : uci];
+              if (!Number.isInteger(index)) throw new Error('No Maia mapping for legal move ' + uci);
+              const logit = Number(logits[index]);
+              if (!Number.isFinite(logit)) throw new Error('Non-finite Maia prediction.');
+              return {uci, logit};
+            });
+            const max = Math.max(...moves.map(x => x.logit));
+            let sum = 0;
+            for (const move of moves) {move.probability = Math.exp(move.logit - max); sum += move.probability;}
+            if (!Number.isFinite(sum) || sum <= 0) throw new Error('Invalid Maia probability total.');
+            for (const move of moves) {move.probability /= sum; delete move.logit;}
+            moves.sort((a,b) => b.probability - a.probability || a.uci.localeCompare(b.uci));
+            self.postMessage({type:'prediction', id:msg.id, moves});
+          } finally {
+            for (const tensor of Object.values(feeds)) tensor.dispose?.();
+            if (outputs) for (const tensor of Object.values(outputs)) tensor.dispose?.();
+          }
+        }
+      } catch (error) {
+        self.postMessage({type:'error', id:msg.id, message:error.message || String(error)});
+      }
+    });
+  };
+}
+
+class MaiaCoordinator {
+  constructor(onComplete, onState, onError) {
+    this.onComplete = onComplete; this.onState = onState; this.onError = onError;
+    this.phase = 'booting'; this.status = 'Loading Maia...'; this.active = null; this.pending = null;
+    this.sequence = 0; this.timer = null;
+    try {
+      this.blobUrl = URL.createObjectURL(new Blob(['(' + maiaWorkerMain.toString() + ')();'], {type:'text/javascript'}));
+      this.worker = new Worker(this.blobUrl);
+      this.worker.onmessage = ({data}) => this.receive(data);
+      this.worker.onerror = event => this.fail('Maia worker: ' + (event.message || 'could not load local runtime/model files.'));
+      this.worker.onmessageerror = () => this.fail('Unreadable Maia worker message.');
+      const url = relative => new URL(relative, document.baseURI).href;
+      this.worker.postMessage({type:'init', runtime:url('vendor/ort/ort.wasm.min.js'),
+        wasmPath:url('vendor/ort/'), model:url('models/maia3/maia3_simplified.onnx'), mapping:url('models/maia3/all_moves.json')});
+      this.timer = setTimeout(() => this.fail('Maia startup timed out. Check its local files or choose Stockfish Lite.'), 180000);
+    } catch (error) {this.fail(error.message);}
+  }
+  request(context) {
+    if (this.phase === 'failed') return;
+    this.pending = context;
+    if (this.active) this.active.cancelled = true;
+    this.pump();
+  }
+  pump() {
+    if (this.phase !== 'idle' || !this.pending) return;
+    this.active = {...this.pending, id:++this.sequence, cancelled:false}; this.pending = null;
+    this.phase = 'predicting'; this.status = 'Maia is predicting human-like moves...';
+    this.worker.postMessage({type:'predict', id:this.active.id, fen:this.active.fen,
+      rating:this.active.rating, legal:[...this.active.legal.keys()]});
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => this.fail('Maia inference timed out. Retry or choose Stockfish.'), 90000);
+    this.onState();
+  }
+  receive(message) {
+    if (this.phase === 'failed') return;
+    if (message.type === 'status') {this.status = message.text; this.onState();}
+    else if (message.type === 'error') this.fail(message.message);
+    else if (message.type === 'ready') {
+      clearTimeout(this.timer); this.phase = 'idle'; this.status = 'Maia ready'; this.onState(); this.pump();
+    } else if (message.type === 'prediction' && this.active?.id === message.id) {
+      clearTimeout(this.timer);
+      const context = this.active; this.active = null; this.phase = 'idle'; this.status = 'Maia ready';
+      if (!context.cancelled) {
+        try {
+          if (!Array.isArray(message.moves) || message.moves.length !== context.legal.size) throw new Error('Incomplete Maia legal-move distribution.');
+          const seen = new Set(); let total = 0;
+          const moves = message.moves.map((entry, i) => {
+            if (!context.legal.has(entry.uci) || seen.has(entry.uci) || !Number.isFinite(entry.probability) || entry.probability < 0) throw new Error('Invalid Maia move/probability.');
+            seen.add(entry.uci); total += entry.probability;
+            return {...context.legal.get(entry.uci), uci:entry.uci, rank:i+1, probability:entry.probability};
+          });
+          if (Math.abs(total - 1) > 1e-4) throw new Error('Maia probabilities do not sum to one.');
+          this.onComplete(context, {moves, complete:true});
+        } catch (error) {this.fail(error.message); return;}
+      }
+      this.onState(); this.pump();
+    }
+  }
+  fail(message) {
+    if (this.phase === 'failed') return;
+    this.destroy(); this.onError('Maia: ' + message);
+  }
+  destroy() {
+    clearTimeout(this.timer); this.phase = 'failed'; this.active = null; this.pending = null;
+    this.worker?.terminate(); if (this.blobUrl) URL.revokeObjectURL(this.blobUrl);
+  }
+}
+function ensureMaia() {
+  if (maiaEngine && maiaEngine.phase !== 'failed') return;
+  const epoch = engineEpoch;
+  maiaEngine = new MaiaCoordinator((context, prediction) => {
+    if (epoch !== engineEpoch || !isMaia() || !contextIsCurrent(context)) return;
+    maiaResult = {...prediction, revision, fen:context.fen}; maiaBusy = false;
+    scheduleComputerMove(); queueDraw();
+  }, () => {if (epoch === engineEpoch) queueDraw();}, message => {
+    if (epoch !== engineEpoch) return;
+    maiaError = message; maiaBusy = false; clearAutoplay(); queueDraw();
+  });
+}
+function opponentDistribution() {
+  if (!isMaia()) return currentDistribution();
+  const moves = (maiaResult?.moves || []).map((x,i) => ({...x, probability:allowBlunders() ? x.probability : (i === 0 ? 1 : 0)}));
+  return {moves, note:allowBlunders() ? 'Sampled from Maia probabilities over all legal moves.' : 'Most likely human move, not a Stockfish best-move search.'};
+}
+function renderModelPanels() {
+  $('model-note').textContent = isMaia()
+    ? 'Maia-3 opponent | Stockfish Lite teacher. Rating is a human-play input, not a certified FIDE strength.'
+    : modelName() + ' plays and supplies the hints. Training presets still limit its search.';
+  $('rating-label').textContent = isMaia() ? 'Human-play rating' : 'Approx. rating';
+  $('blunder-control').title = isMaia() ? 'Checked: sample Maia human-move probabilities. Unchecked: its most likely human move, which may still be a mistake.' : 'Checked: weighted choice of Stockfish top four. Unchecked: its final best move at this search budget.';
+  $('maia-panel').hidden = !isMaia() || !isPlay();
+  $('think-label').textContent = isMaia() ? 'Teacher think limit' : 'Think limit';
+  $('weighting-control').hidden = isMaia();
+  $('maia-behaviour').hidden = !isMaia();
+  $('sf-behaviour').hidden = isMaia();
+  if (!isMaia() || !isPlay()) return;
+  const el = $('maia-suggestions'); el.replaceChildren();
+  if (!hintsFor(computerColour())) {el.textContent = colourName(computerColour()) + ' hints hidden.'; return;}
+  if (!computerTurn()) {el.textContent = 'Maia predicts when it is the computer\'s turn.'; return;}
+  if (maiaError) {el.textContent = maiaError; return;}
+  if (!maiaResult) {el.textContent = maiaEngine?.status || 'Waiting for Maia...'; return;}
+  const rows = maiaResult.moves.slice(0,4);
+  for (const move of rows) {
+    const row = document.createElement('div'); row.className = 'hintrow';
+    const label = document.createElement('span'); label.textContent = '#' + move.rank + ' ' + move.from.toUpperCase() + ' \u2192 ' + move.to.toUpperCase() + (move.promotion ? '=' + move.promotion.toUpperCase() : '');
+    const probability = document.createElement('span'); probability.className = 'chance';
+    probability.textContent = (move.probability * 100).toFixed(1) + '% predicted';
+    row.append(label, probability); el.appendChild(row);
+  }
+  const note = document.createElement('p'); note.className = 'muted';
+  const rest = Math.max(0, 1 - rows.reduce((sum,x) => sum + x.probability,0));
+  note.textContent = 'Other legal moves: ' + (rest * 100).toFixed(1) + '%. ' + (allowBlunders()
+    ? 'Sampling uses all legal moves, not only these four. No Stockfish rank bonuses or mate filter are applied to Maia.'
+    : 'Allow Blunder OFF: the first prediction will be chosen deterministically. Human likelihood does not mean objective move quality.');
+  el.appendChild(note);
+}
+
+/** UCI coordinator: never starts a new search before the old search's bestmove. */
+class EngineCoordinator {
+  constructor(onUpdate, onComplete, onState, onError, config) {
+    this.onUpdate = onUpdate; this.onComplete = onComplete;
+    this.onState = onState; this.onError = onError;
+    this.phase = 'booting'; this.active = null; this.pending = null;
+    this.lastSerial = null; this.watchdog = null;
+    try {
+      this.worker = new Worker(config.path);
+      this.worker.onmessage = event => {
+        for (const line of String(event.data).split(/\r?\n/)) this.receive(line.trim());
+      };
+      this.worker.onerror = () => this.fail(config.name + ' failed to load. Check ' + config.path + ' and its matching .wasm; run install-models.py. No other engine was substituted.');
+      this.worker.onmessageerror = () => this.fail('A Stockfish worker message could not be read.');
+      this.watchdog = setTimeout(() => this.fail(config.name + ' did not start. Check the local engine files or choose Stockfish Lite.'), config.bootTimeout);
+      this.send('uci');
+    } catch (error) { this.fail('Cannot start Stockfish: ' + error.message); }
+  }
+  send(text) { this.worker?.postMessage(text); }
+  request(context) {
+    if (this.phase === 'failed') return;
+    this.pending = context;
+    if (this.active) this.active.cancelled = true;
+    if (this.phase === 'searching') {
+      this.phase = 'stopping';
+      this.send('stop');
+      clearTimeout(this.watchdog);
+      this.watchdog = setTimeout(() => this.fail('Stockfish did not finish cancelling its search. Retry the engine.'), 15000);
+    }
+    this.pump();
+  }
+  pump() {
+    if (this.phase !== 'idle' || !this.pending) return;
+    const context = this.pending; this.pending = null;
+    this.active = {...context, cancelled:false, groups:new Map(), complete:null};
+    this.phase = 'syncing';
+    if (this.lastSerial !== context.serial) {
+      this.send('ucinewgame');
+      this.lastSerial = context.serial;
+    }
+    // Do not inherit a deeper search after a rating change or a practice move.
+    this.send('setoption name Clear Hash');
+    this.send('isready');
+    clearTimeout(this.watchdog);
+    this.watchdog = setTimeout(() => this.fail('Stockfish did not acknowledge readiness. Retry the engine.'), 15000);
+    this.onState();
+  }
+  receive(line) {
+    if (!line || this.phase === 'failed') return;
+    if (line.includes('CRITICAL ERROR') || /^abort\(/i.test(line)) {
+      this.fail('Stockfish stopped: ' + line); return;
+    }
+    if (line === 'uciok' && this.phase === 'booting') {
+      clearTimeout(this.watchdog);
+      this.send('setoption name MultiPV value 4');
+      this.send('setoption name Ponder value false');
+      this.send('setoption name Skill Level value 20');
+      this.send('setoption name UCI_LimitStrength value false');
+      this.phase = 'idle'; this.onState(); this.pump(); return;
+    }
+    if (line === 'readyok' && this.phase === 'syncing') {
+      clearTimeout(this.watchdog);
+      if (!this.active || this.active.cancelled) {
+        this.active = null; this.phase = 'idle'; this.pump(); return;
+      }
+      this.phase = 'searching';
+      this.send(this.active.position);
+      this.send('go depth ' + this.active.depth + ' nodes ' + this.active.nodes +
+        (this.active.timeLimit > 0 ? ' movetime ' + this.active.timeLimit : ''));
+      if (this.active.timeLimit > 0) {
+        this.watchdog = setTimeout(() => this.fail('Stockfish exceeded its time limit and stopped responding. Retry the engine.'), this.active.timeLimit + 15000);
+      }
+      this.onState(); return;
+    }
+    if (line.startsWith('info ') && this.phase === 'searching' && this.active && !this.active.cancelled) {
+      this.parseInfo(line); return;
+    }
+    if (line.startsWith('bestmove ') && ['searching','stopping'].includes(this.phase)) {
+      clearTimeout(this.watchdog);
+      const search = this.active;
+      this.active = null; this.phase = 'idle';
+      if (search && !search.cancelled) {
+        let snapshot = search.complete;
+        if (!snapshot) {
+          const depths = [...search.groups.keys()].sort((a, b) => b - a);
+          for (const depth of depths) {
+            const rows = this.rows(search.groups.get(depth));
+            if (rows.length) {snapshot = {moves:rows, depth, partial:true}; break;}
+          }
+        }
+        // A legal bestmove is a fallback only when the engine supplied no usable scores.
+        if (!snapshot) {
+          const uci = line.split(/\s+/)[1], move = search.legal.get(uci);
+          if (move) snapshot = {moves:[{...move, uci, rank:1, kind:'unknown', score:null, scoreText:'score unavailable', depth:0}], depth:0, partial:true};
+        }
+        const bestUci = line.split(/\s+/)[1];
+        // In strict mode follow the actual final UCI bestmove, not a stale
+        // complete MultiPV set if the timer interrupted the next iteration.
+        if (search.strict && search.legal.has(bestUci)) {
+          snapshot = this.strictSnapshot(search, bestUci);
+        }
+        this.onComplete(search, {...(snapshot || {moves:[], depth:0, partial:true}), bestUci});
+      }
+      this.onState(); this.pump();
+    }
+  }
+  strictSnapshot(search, bestUci) {
+    const depths = [...search.groups.keys()].sort((a, b) => b - a);
+    // Use the latest coherent (same-depth) set in which rank 1 is bestmove.
+    // At a time cutoff this may be partial: do not invent the missing scores.
+    for (const depth of depths) {
+      const group = search.groups.get(depth);
+      if (group.get(1)?.uci !== bestUci) continue;
+      const rows = this.rows(group);
+      if (rows[0]?.uci === bestUci) return {
+        moves:rows, depth,
+        partial:rows.length !== search.expected || rows.some((x, i) => x.rank !== i + 1)
+      };
+    }
+    // If only a bestmove was reported (no usable ranked info), it is still
+    // legal and authoritative; report its score as unavailable.
+    const move = search.legal.get(bestUci);
+    return {moves:[{...move, uci:bestUci, rank:1, kind:'unknown', score:null,
+      scoreText:'score unavailable', depth:0}], depth:0, partial:true};
+  }
+  rows(group) {
+    const seen = new Set();
+    return [...group.values()].sort((a, b) => a.rank - b.rank).filter(row => {
+      if (seen.has(row.uci)) return false;
+      seen.add(row.uci); return true;
+    });
+  }
+  parseInfo(line) {
+    if (/\b(?:lowerbound|upperbound)\b/.test(line)) return;
+    const pv = line.match(/\bpv\s+([a-h][1-8][a-h][1-8][qrbn]?)(?:\s|$)/);
+    const score = line.match(/\bscore\s+(cp|mate)\s+(-?\d+)/);
+    const depth = Number(line.match(/\bdepth\s+(\d+)/)?.[1] || 0);
+    const rank = Number(line.match(/\bmultipv\s+(\d+)/)?.[1] || 1);
+    const search = this.active;
+    if (!pv || !score || !depth || rank < 1 || rank > search.expected) return;
+    const move = search.legal.get(pv[1]);
+    if (!move) return;
+    const kind = score[1], raw = Number(score[2]);
+    const row = {...move, uci:pv[1], rank, depth, kind, score:kind === 'cp' ? raw / 100 : null,
+      mate:kind === 'mate' ? raw : null,
+      scoreText:kind === 'mate' ? (raw > 0 ? 'Mate in ' + raw : 'Mated in ' + Math.abs(raw)) : (raw >= 0 ? '+' : '') + (raw / 100).toFixed(2)};
+    if (!search.groups.has(depth)) search.groups.set(depth, new Map());
+    const group = search.groups.get(depth); group.set(rank, row);
+    const rows = this.rows(group);
+    // Probabilities compare a full MultiPV set at one common depth, not mixed iterations.
+    if (rows.length === search.expected && rows.every((x, i) => x.rank === i + 1) && (!search.complete || depth >= search.complete.depth)) {
+      search.complete = {moves:rows, depth, partial:false};
+      this.onUpdate(search, search.complete);
+      for (const oldDepth of search.groups.keys()) if (oldDepth < depth - 1) search.groups.delete(oldDepth);
+    }
+  }
+  fail(message) {
+    if (this.phase === 'failed') return;
+    clearTimeout(this.watchdog); this.phase = 'failed'; this.pending = null; this.active = null;
+    this.worker?.terminate(); this.onError(message);
+  }
+  destroy() {
+    clearTimeout(this.watchdog); this.worker?.terminate();
+    this.pending = null; this.active = null; this.phase = 'failed';
+  }
+}
+
+function createPiece(piece) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  const side = colourName(piece.color);
+  svg.setAttribute('class', 'piece ' + side.toLowerCase());
+  svg.setAttribute('viewBox', '0 0 64 64'); svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+  svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', side + ' ' + names[piece.type]);
+  svg.setAttribute('focusable', 'false'); svg.dataset.color = piece.color; svg.dataset.piece = piece.type;
+  svg.innerHTML = PIECE_ARTWORK[piece.type]; // Static local SVG only; no untrusted markup.
+  return svg;
+}
+/** Fit to BOTH dimensions; sidebar never takes space away from a larger board.
+ * Measure actual header and board chrome instead of guessing a fixed height.
+ * Width and height are CSS pixels. Integer squares keep all 64 cells identical.
+ */
+function sizeBoard() {
+  const layout = $('layout'), board = $('board'), group = board.parentElement;
+  const style = getComputedStyle(document.body), boardStyle = getComputedStyle(board);
+  const vv = window.visualViewport;
+  // Honour mobile browser chrome/keyboard without fighting intentional pinch zoom.
+  const viewportHeight = vv && Math.abs(vv.scale - 1) < 0.02 ? vv.height : window.innerHeight;
+  const top = layout.getBoundingClientRect().top + window.scrollY;
+  const outerHeight = node => {
+    const css = getComputedStyle(node);
+    return node.getBoundingClientRect().height + parseFloat(css.marginTop || 0) + parseFloat(css.marginBottom || 0);
+  };
+  const borderX = parseFloat(boardStyle.borderLeftWidth) + parseFloat(boardStyle.borderRightWidth);
+  const borderY = parseFloat(boardStyle.borderTopWidth) + parseFloat(boardStyle.borderBottomWidth);
+  const boardChrome = outerHeight($('top-seat')) + outerHeight($('bottom-seat')) + outerHeight($('lastmove'));
+  const gap = parseFloat(getComputedStyle(group).columnGap) || 0;
+  const widthChrome = $('evaluation-bar').getBoundingClientRect().width + gap + borderX;
+  const width = layout.clientWidth;
+  const heightBudget = viewportHeight - top - parseFloat(style.paddingBottom) - boardChrome - borderY - 2;
+  const contentSize = Math.min(Math.max(0,width - widthChrome), Math.max(128,heightBudget));
+  const square = Math.max(8, Math.floor(contentSize / 8));
+  const columnWidth = square * 8 + widthChrome;
+  const layoutGap = parseFloat(getComputedStyle(layout).columnGap) || 0;
+  const beside = !focusBoard && width - columnWidth - layoutGap >= 300;
+  document.documentElement.style.setProperty('--sq', square + 'px');
+  document.documentElement.style.setProperty('--boardcolumn-width', columnWidth + 'px');
+  document.documentElement.style.setProperty('--play-height', (square * 8 + borderY + boardChrome) + 'px');
+  layout.classList.toggle('with-sidebar', beside);
+  const dimensions = square * 8;
+  $('board-size').textContent = 'Auto-fit board: ' + dimensions + ' x ' + dimensions + ' px (' + square + ' px squares).';
+}
+function queueSize() {
+  if (sizeFrame !== null) return;
+  sizeFrame = requestAnimationFrame(() => {sizeFrame = null; sizeBoard();});
+}
+function queueDraw() {
+  if (drawFrame !== null) return;
+  drawFrame = requestAnimationFrame(() => {drawFrame = null; draw();});
+}
+function drawHintLines(board, files, ranks) {
+  const visibleHints = boardHints();
+  if (!visibleHints.length) return;
+  const ns = 'http://www.w3.org/2000/svg', svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('class', 'hint-lines'); svg.setAttribute('viewBox', '0 0 800 800');
+  svg.setAttribute('preserveAspectRatio', 'none'); svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+  const centre = sq => ({x:(files.indexOf(sq[0]) + .5) * 100, y:(ranks.indexOf(sq[1]) + .5) * 100});
+  [...visibleHints].sort((a, b) => b.rank - a.rank).forEach(move => {
+    const from = centre(move.from), to = centre(move.to), group = document.createElementNS(ns, 'g');
+    group.dataset.from = move.from; group.dataset.to = move.to; group.dataset.rank = String(move.rank);
+    for (const className of ['hint-line-outline', 'hint-line ' + (move.rank === 1 ? 'best' : 'alternative')]) {
+      const line = document.createElementNS(ns, 'line'); line.setAttribute('class', className);
+      for (const [key, val] of Object.entries({x1:from.x,y1:from.y,x2:to.x,y2:to.y})) line.setAttribute(key, val);
+      group.appendChild(line);
+    }
+    svg.appendChild(group);
+  });
+  board.appendChild(svg);
+}
+function draw() {
+  const board = $('board'), visibleHints = boardHints(), preview = voicePreview();
+  const focusSquare = board.contains(document.activeElement) ? document.activeElement.dataset.square : null;
+  board.replaceChildren(); board.classList.toggle('computer-turn', computerTurn());
+  board.setAttribute('aria-label', 'Chessboard. ' + colourName(game.turn()) + ' to move.' + (computerTurn() ? ' Computer is playing.' : ''));
+  const files = flipped ? 'hgfedcba' : 'abcdefgh', ranks = flipped ? '12345678' : '87654321';
+  const fragment = document.createDocumentFragment();
+  for (const r of ranks) for (const f of files) {
+    const sq = f + r, piece = game.get(sq), cell = document.createElement('div');
+    cell.dataset.square = sq;
+    cell.className = 'sq ' + ((f.charCodeAt(0) - 97 + Number(r)) % 2 === 0 ? 'light' : 'dark');
+    cell.setAttribute('role', 'button'); cell.tabIndex = 0;
+    let label = sq.toUpperCase() + (piece ? ', ' + colourName(piece.color) + ' ' + names[piece.type] : ', empty');
+    if (isPlay() && lastMove && (lastMove.from === sq || lastMove.to === sq)) {
+      cell.classList.add('last-move', lastMove.from === sq ? 'last-from' : 'last-to');
+      label += lastMove.from === sq ? ', last move from' : ', last move to';
+    }
+    if (selected === sq) cell.classList.add('selected');
+    cell.setAttribute('aria-pressed', String(selected === sq));
+    const recs = visibleHints.filter(x => x.to === sq);
+    if (recs.length) {
+      cell.classList.add(recs.some(x => x.rank === 1) ? 'best' : 'alternative');
+      if (recs.some(x => x.voicePreview)) cell.classList.add('voice-preview');
+      label += (preview ? ', voice preview, say move to confirm ' : ', hints ') + recs.map(x => x.from.toUpperCase() + ':' + x.to.toUpperCase()).join('; ');
+    }
+    cell.setAttribute('aria-label', label);
+    if (piece) cell.appendChild(createPiece(piece));
+    const coord = document.createElement('span'); coord.className = 'coord'; coord.textContent = sq; cell.appendChild(coord);
+    if (recs.length) {
+      const box = document.createElement('div'); box.className = 'moves';
+      for (const x of recs) {
+        const tag = document.createElement('span'); tag.className = 'move';
+        tag.textContent = (x.voicePreview ? '' : '#' + x.rank + ' ') + x.from.toUpperCase() + ':' + x.to.toUpperCase() + (x.needsPromotion ? '=?' : x.promotion ? '=' + x.promotion.toUpperCase() : '');
+        box.appendChild(tag);
+      }
+      cell.appendChild(box);
+    }
+    cell.onclick = () => clickSquare(sq);
+    cell.onkeydown = event => {
+      if (event.key === 'Enter' || event.key === ' ') {event.preventDefault(); clickSquare(sq);}
+    };
+    fragment.appendChild(cell);
+  }
+  board.appendChild(fragment); drawHintLines(board, files, ranks);
+  if (preview) preview.painted = true;
+  if (focusSquare) board.querySelector('[data-square="' + focusSquare + '"]')?.focus({preventScroll:true});
+  const top = computerColour(), bottom = humanColour();
+  $('top-seat').textContent = colourName(top) + ' - top' + (isPlay() ? ' - ' + modelName() : '');
+  $('bottom-seat').textContent = colourName(bottom) + ' - bottom' + (isPlay() ? ' - You' : '');
+  $('play-settings').hidden = !isPlay(); $('play-legend').hidden = !isPlay();
+  $('computer-note').textContent = 'Computer: ' + colourName(top) + ' (top). You: ' + colourName(bottom) + ' (bottom). Flip board swaps sides.';
+  renderStrengthControls();
+  $('undo').disabled = isPlay() ? !moveHistory.some(m => m.color === humanColour()) : !moveHistory.length;
+  $('undo').title = isPlay() ? 'Undo your most recent move and the computer reply, if already played.' : 'Undo one move.';
+  $('lastmove').textContent = lastMove ? 'Last move: ' + colourName(lastMove.color) + '  ' + lastMove.from.toUpperCase() + ' \u2192 ' + lastMove.to.toUpperCase() + (lastMove.promotion ? '=' + lastMove.promotion.toUpperCase() : '') + '  (' + lastMove.san + ')' : 'No moves yet.';
+  const historyText = moveHistory.map((x, i) => (i % 2 === 0 ? Math.floor(i / 2) + 1 + '. ' : '') + x.san).join('  ');
+  if ($('history').textContent !== (historyText || 'No moves yet.')) {
+    $('history').textContent = historyText || 'No moves yet.';
+    $('history').scrollTop = $('history').scrollHeight;
+  }
+  const v = evaluation.known ? Math.max(-8, Math.min(8, evaluation.value)) : 0;
+  $('whitefill').style.height = (50 + v / 16 * 100) + '%';
+  $('evalnum').textContent = evaluation.known ? evaluation.text : '\u2014';
+  $('evaluation-bar').setAttribute('aria-label', 'White advantage at bottom, black at top. ' + evaluation.description);
+  $('evaluation-bar').title = 'White-perspective evaluation, not a win probability. ' + evaluation.description;
+  renderSuggestions(); renderCommentary(); renderModelPanels(); setStatus(); voiceControls(); queueSize();
+}
+function renderStrengthControls() {
+  const rating = ratingLabel(), preset = presetFor(rating), allow = allowBlunders();
+  $('allowBlunder').disabled = !isPlay();
+  $('blunder-control').classList.toggle('control-disabled', !isPlay());
+  $('weighting').disabled = !allow || isMaia();
+  $('weighting-control').classList.toggle('control-disabled', !allow);
+  $('weighting').title = allow ? 'Weighted choice among the analysed top four.' : 'Enable Allow Blunder to use weighted selection.';
+  $('strength-summary').textContent = 'Current training label: ' + rating + '. Search ceiling: depth ' + preset.depth +
+    ', approximately ' + numberText(preset.nodes) + ' nodes, with four candidate lines. These numbers are search budgets, not FIDE measurements.';
+  $('selection-summary').textContent = modelName() + ' | Training level ' + rating + ' | ' + (isMaia() ? (allow ? 'Allow Blunder ON: sample all legal Maia predictions.' : 'Allow Blunder OFF: choose Maia\'s most likely human move, not Stockfish\'s best move.') : (allow
+    ? 'Allow Blunder ON: weighted random choice among the analysed top four. Your selected weighting and mate safeguards are preserved.'
+    : 'Allow Blunder OFF: play Stockfish\'s final best move at this level. No intentional random choice; limited analysis can still miss a tactic.'));
+  const showChoice = isPlay() && lastChoice && lastMove && uciOf(lastMove) === lastChoice.uci && hintsFor(lastMove.color);
+  $('choice-note').hidden = !showChoice;
+  if (showChoice) $('choice-note').textContent = (lastChoice.model || 'Stockfish') + ' played ' + lastMove.san + ' at level ' + lastChoice.rating + ': ' +
+    (lastChoice.allowBlunder ? 'candidate #' + lastChoice.rank + ' (' + (lastChoice.probability * 100).toFixed(1) + '% selection chance).' : (lastChoice.model === 'Maia-3' ? 'most likely human move; no random selection.' : 'final best move; no random selection.'));
+}
+function renderSuggestions() {
+  const el = $('suggestions'), note = $('analysis-note');
+  $('hint-legend').textContent = voicePreview() ? 'Green identifies your unplayed voice command, not an engine ranking. Engine hints return when the preview is played or cleared.' : 'Green = #1. Yellow = #2-4. Labels show rank and origin:destination. Dotted lines connect square centres. Hints apply only to the side whose turn it is.';
+  $('suggestions-title').textContent = teacherName() + ' hints - ' + colourName(game.turn());
+  el.replaceChildren(); note.textContent = '';
+  if (voicePreview()) {
+    $('suggestions-title').textContent = 'Your spoken move - preview only';
+    el.textContent = voiceMoveLabel() + '. ' + (voicePreview().needsPromotion ? 'Say the promotion piece first.' : 'Say "move" to play, or speak another move to replace it.');
+    note.textContent = 'Engine hint colours and lines are temporarily hidden, not disabled. Green identifies your pending command; it does not mean Stockfish recommends it.'; return;
+  }
+  if (game.isGameOver()) {el.textContent = 'The game has finished.'; return;}
+  if (!hintsVisible()) {el.textContent = colourName(game.turn()) + ' hints hidden.'; return;}
+  if (!recommendations.length) {el.textContent = engineError ? 'Analysis unavailable.' : 'Analysing position...'; return;}
+  const weighted = currentDistribution();
+  const percentages = percentageLabels(weighted.moves);
+  recommendations.forEach((x, i) => {
+    const row = document.createElement('div'); row.className = 'hintrow';
+    const rank = document.createElement('span'); rank.className = 'rank ' + (x.rank === 1 ? 'green' : 'yellow'); rank.textContent = '#' + x.rank;
+    const move = document.createElement('span'); move.textContent = x.from.toUpperCase() + ' \u2192 ' + x.to.toUpperCase() + (x.promotion ? '=' + x.promotion.toUpperCase() : '');
+    const score = document.createElement('span'); score.className = 'score'; score.textContent = '(' + x.scoreText + ')';
+    row.append(rank, move, score);
+    if (computerTurn() && !isMaia()) {
+      const chance = document.createElement('span'); chance.className = 'chance'; chance.textContent = percentages[i];
+      chance.title = (busy ? 'Provisional' : 'Final') + ' chance of this move being selected, not a winning chance.'; row.appendChild(chance);
+    }
+    el.appendChild(row);
+  });
+  const depth = result?.depth || recommendations[0]?.depth || 0;
+  const preset = presetFor(ratingLabel());
+  note.textContent = 'Training level ' + ratingLabel() + '. ' + (depth ? 'Depth ' + depth + ' / ' + preset.depth +
+    (result?.partial ? ' (partial set)' : ' (complete set)') + '. ' : '') + 'Scores favour the side to move. ' + (busy ? 'Still analysing.' : 'Search complete.');
+  if (!busy && depth < preset.depth) note.textContent += ' Stopped before the depth ceiling (node/time limit or early engine completion).';
+  if (computerTurn() && !isMaia()) note.textContent += ' Percentages = ' + (busy ? 'provisional ' : '') + 'selection chances. ' + weighted.note;
+}
+function explain(move) {
+  if (!move) return 'Waiting for analysis.';
+  const parts = [];
+  if (move.san?.includes('#')) parts.push('This delivers checkmate.');
+  else if (move.san?.includes('+')) parts.push('This gives check.');
+  if (move.captured) parts.push('This captures a ' + names[move.captured] + (move.flags?.includes('e') ? ' en passant.' : '.'));
+  if (move.flags?.includes('k') || move.flags?.includes('q')) parts.push('This castles, moving the king and rook together.');
+  if (['d4','e4','d5','e5'].includes(move.to)) parts.push('This occupies a central square.');
+  if (['n','b'].includes(move.piece) && move.from[1] === (move.color === 'w' ? '1' : '8')) parts.push('This develops a minor piece from the back rank.');
+  if (move.promotion) parts.push('This promotes the pawn to a ' + names[move.promotion] + '.');
+  if (!parts.length) parts.push('No simple tactical feature is identified by this commentary. Compare the resulting piece activity and king safety.');
+  return (move.san || move.from.toUpperCase() + ':' + move.to.toUpperCase()) + ': ' + parts.join(' ') + ' These are rule-based observations, not Stockfish\'s full reasoning.';
+}
+function renderCommentary() {
+  if (voicePreview()) {$('commentary').textContent = 'A voice move is being previewed, not played. Confirm with "move", replace it by speaking new coordinates, or click the board to use the mouse.'; return;}
+  if (!$('talk').checked) {$('commentary').textContent = 'Commentary disabled.'; return;}
+  if (game.isGameOver()) {$('commentary').textContent = game.isCheckmate() ? 'Checkmate. Start a new game or undo to explore another line.' : 'The game is drawn. Start a new game or undo to explore another line.'; return;}
+  if (!hintsVisible()) {$('commentary').textContent = colourName(game.turn()) + ' move commentary is hidden with that side\'s hints.'; return;}
+  $('commentary').textContent = explain(recommendations[0]);
+}
+function setStatus() {
+  let text;
+  if (game.isCheckmate()) text = 'Checkmate - ' + colourName(game.turn() === 'w' ? 'b' : 'w') + ' wins.';
+  else if (game.isGameOver()) text = game.isStalemate() ? 'Draw - stalemate.' : game.isThreefoldRepetition() ? 'Draw - threefold repetition.' : game.isInsufficientMaterial() ? 'Draw - insufficient material.' : 'Draw.';
+  else {
+    text = colourName(game.turn()) + ' to move' + (game.isCheck() ? ' - CHECK' : '');
+    if (isPlay()) text += computerTurn() ? ' - Computer (top)' : ' - Your turn (bottom)';
+    else text += ' - Practice: move either side';
+    if (engineError || maiaError) text += ' | ' + (engineError || maiaError);
+    else if (maiaBusy && computerTurn()) text += ' | ' + (maiaEngine?.status || 'Loading Maia...');
+    else if (engine?.phase === 'booting') text += ' | Loading ' + teacherName() + (modelId() === 'full' ? ' (large model)...' : '...');
+    else if (autoTimer !== null) text += ' | Computer reply ready';
+    else if (busy) text += ' | Analysing...';
+    else text += ' | Analysis ready';
+  }
+  $('status').textContent = text;
+  $('engine-retry').hidden = !engineError && !maiaError;
+}
+function clearAutoplay() {if (autoTimer !== null) clearTimeout(autoTimer); autoTimer = null;}
+function contextIsCurrent(context) {return context.revision === revision && context.fen === game.fen();}
+function updateEvaluation(move, turn) {
+  if (!move || move.kind === 'unknown') return;
+  const sign = turn === 'w' ? 1 : -1;
+  if (move.kind === 'mate') {
+    const winningColour = move.mate > 0 ? turn : (turn === 'w' ? 'b' : 'w');
+    evaluation = {value:winningColour === 'w' ? 100 : -100, text:(winningColour === 'w' ? '+' : '-') + 'M' + Math.abs(move.mate), description:colourName(winningColour) + ' has an engine-reported mate in ' + Math.abs(move.mate) + '.', known:true};
+  } else {
+    const score = move.score * sign;
+    evaluation = {value:score, text:(score >= 0 ? '+' : '') + score.toFixed(2), description:'White-perspective score ' + score.toFixed(2) + '.', known:true};
+  }
+}
+function acceptSnapshot(context, snapshot, complete) {
+  if (!contextIsCurrent(context)) return;
+  recommendations = snapshot.moves; result = {...snapshot, complete, revision, fen:context.fen};
+  updateEvaluation(recommendations[0], context.turn);
+  if (complete) busy = false;
+  queueDraw();
+  if (complete && computerTurn()) {
+    if (recommendations.length) scheduleComputerMove();
+    else {engineError = 'Stockfish returned no legal move candidates. Retry the engine.'; queueDraw();}
+  }
+}
+function scheduleComputerMove() {
+  clearAutoplay();
+  if (!computerTurn() || engineError || maiaError || !result?.complete || result.revision !== revision || result.fen !== game.fen()) return;
+  if (isMaia() && (!maiaResult?.complete || maiaResult.revision !== revision || maiaResult.fen !== game.fen())) return;
+  const token = revision, fen = game.fen(), side = computerColour(), chosenModel = modelId();
+  autoTimer = setTimeout(() => {
+    autoTimer = null;
+    if (token !== revision || fen !== game.fen() || !computerTurn() || side !== computerColour() || chosenModel !== modelId()) return;
+    const distribution = opponentDistribution();
+    // No PRNG call at all in best-only mode. Checkbox changes trigger a fresh
+    // request/revision, so an older weighted reply cannot play afterwards.
+    const chosen = allowBlunders() ? sampleMove(distribution.moves) : distribution.moves.find(x => x.probability === 1);
+    if (!chosen || !legalMoves.some(m => uciOf(m) === chosen.uci)) {
+      engineError = 'The selected computer move was not legal for the current position. Retry the engine.';
+      queueDraw(); return;
+    }
+    lastChoice = {uci:chosen.uci, rank:chosen.rank, probability:chosen.probability,
+      distribution:distribution.moves, rating:ratingLabel(), allowBlunder:allowBlunders(), model:modelName()};
+    performMove(chosen, 'computer');
+  }, AUTO_DELAY_MS);
+  queueDraw();
+}
+function requestAnalysis(keepListening = false) {
+  voicePositionChanged(keepListening);
+  clearAutoplay(); revision++; selected = null; recommendations = []; result = null;
+  maiaResult = null; maiaBusy = false; maiaEngine?.request(null);
+  evaluation.known = false;
+  if (game.isGameOver()) {
+    busy = false; engine?.request(null);
+    if (game.isCheckmate()) {
+      const winner = game.turn() === 'w' ? 'b' : 'w';
+      evaluation = {value:winner === 'w' ? 100 : -100, text:winner === 'w' ? '+M' : '-M', description:colourName(winner) + ' wins by checkmate.', known:true};
+    } else evaluation = {value:0, text:'Draw', description:'Drawn game.', known:true};
+    queueDraw(); return;
+  }
+  if (!engine || engine.phase === 'failed') {busy = false; queueDraw(); return;}
+  busy = true;
+  const moves = moveHistory.map(uciOf);
+  const context = {
+    revision, fen:game.fen(), turn:game.turn(), serial:gameSerial,
+    position:'position startpos' + (moves.length ? ' moves ' + moves.join(' ') : ''),
+    legal:new Map(legalMoves.map(m => [uciOf(m), m])), expected:Math.min(4, legalMoves.length),
+    rating:ratingLabel(), ...presetFor(ratingLabel()),
+    strict:computerTurn() && !allowBlunders() && !isMaia(),
+    timeLimit:isPlay() ? Number($('think').value) : 0
+  };
+  engine.request(context);
+  if (isMaia() && computerTurn() && !maiaError) {
+    maiaBusy = true; ensureMaia(); maiaEngine.request(context);
+  }
+  queueDraw();
+}
+function performMove(candidate, actor) {
+  if (actor === 'computer' && !computerTurn()) return false;
+  if (actor === 'human' && computerTurn()) return false;
+  const legal = legalMoves.find(m => m.from === candidate.from && m.to === candidate.to && (m.promotion || '') === (candidate.promotion || ''));
+  if (!legal) return false;
+  const input = {from:legal.from, to:legal.to};
+  if (legal.promotion) input.promotion = legal.promotion;
+  try {game.move(input);} catch (error) {return false;}
+  selected = null; refreshPositionCache(); saveSession(); requestAnalysis(true); return true;
+}
+function clickSquare(square) {
+  if (game.isGameOver() || computerTurn()) return;
+  voiceMouseInteraction();
+  const piece = game.get(square);
+  if (selected === square) {selected = null; queueDraw(); return;}
+  if (selected) {
+    const targets = legalMoves.filter(m => m.from === selected && m.to === square);
+    if (targets.length) {
+      let move = targets[0];
+      if (targets.some(m => m.promotion)) {
+        const answer = prompt('Promote to q (queen), r (rook), b (bishop), or n (knight):', 'q');
+        if (answer === null) return;
+        const choice = answer.trim().toLowerCase();
+        if (!/^[qrbn]$/.test(choice)) return;
+        move = targets.find(m => m.promotion === choice);
+      }
+      if (move) performMove(move, 'human');
+      return;
+    }
+  }
+  selected = piece?.color === game.turn() ? square : null; queueDraw();
+}
+function startEngine() {
+  engineEpoch++; revision++; engine?.destroy(); maiaEngine?.destroy();
+  maiaEngine = null; maiaError = ''; maiaResult = null; maiaBusy = false;
+  clearAutoplay(); engineError = ''; evaluation.known = false;
+  const epoch = engineEpoch;
+  engine = new EngineCoordinator(
+    (context, snapshot) => {if (epoch === engineEpoch) acceptSnapshot(context, snapshot, false);},
+    (context, snapshot) => {if (epoch === engineEpoch) acceptSnapshot(context, snapshot, true);},
+    () => {if (epoch === engineEpoch) queueDraw();},
+    message => {if (epoch === engineEpoch) {engineError = message; busy = false; clearAutoplay(); queueDraw();}},
+    MODEL_CONFIGS[isMaia() ? 'lite' : modelId()]
+  );
+  requestAnalysis();
+}
+// VOICE INPUT: local-only, explicit consent, and no automatic cloud fallback.
+// The parser is intentionally strict. Never infer an arbitrary legal move from
+// incomplete speech; an ASR hallucination should not be a chess command.
+const VOICE_FILE_WORDS = Object.freeze({a:'a',ay:'a',alpha:'a',alfa:'a',b:'b',be:'b',bee:'b',bravo:'b',c:'c',see:'c',sea:'c',charlie:'c',d:'d',dee:'d',delta:'d',e:'e',ee:'e',echo:'e',f:'f',ef:'f',eff:'f',foxtrot:'f',g:'g',gee:'g',golf:'g',h:'h',aitch:'h',haitch:'h',hotel:'h'});
+const VOICE_RANK_WORDS = Object.freeze({one:'1',won:'1',two:'2',to:'2',too:'2',three:'3',tree:'3',four:'4',for:'4',fore:'4',five:'5',six:'6',seven:'7',eight:'8',ate:'8'});
+const VOICE_PROMOTIONS = Object.freeze({q:'q',queen:'q',r:'r',rook:'r',b:'b',bishop:'b',n:'n',knight:'n',night:'n'});
+function parseSpokenMove(text) {
+  if (typeof text !== 'string' || text.length > 180) return {error:'Say one short move, with both square names.'};
+  let s = text.toLowerCase().normalize('NFKC').trim().replace(/[.,!?;:()]/g,' ').replace(/[\u2192\u2013\u2014-]/g,' ');
+  s = s.replace(/^please\s+/,'').replace(/\s+please$/,'').replace(/^(?:move|play)\s+/,'').replace(/^from\s+/,'').trim();
+  if (/^(?:castle|castles|castling)\s+(?:king\s*side|short)$/.test(s)) return {castle:'k'};
+  if (/^(?:castle|castles|castling)\s+(?:queen\s*side|long)$/.test(s)) return {castle:'q'};
+  if (/^(?:o\s*o\s*o|0\s*0\s*0)$/.test(s)) return {castle:'q'};
+  if (/^(?:o\s*o|0\s*0)$/.test(s)) return {castle:'k'};
+  if (/^castl/.test(s)) return {error:'Specify castle kingside or castle queenside.'};
+  // Split compact UCI and normal coordinates before tokenisation.
+  s = s.replace(/([a-h])([1-8])/g,'$1 $2 ').replace(/([1-8])([a-h])/g,'$1 $2');
+  const tokens = s.replace(/=/g,' ').split(/\s+/).filter(Boolean);
+  let i = 0;
+  const square = () => {
+    const f = VOICE_FILE_WORDS[tokens[i++]];
+    const t = tokens[i++], r = /^[1-8]$/.test(t || '') ? t : VOICE_RANK_WORDS[t];
+    return f && r ? f + r : null;
+  };
+  const from = square();
+  if (['to','two','too'].includes(tokens[i])) i++;
+  const to = square();
+  if (!from || !to) return {error:'Could not read two squares. Try "Charlie two to Charlie four" or edit to C2 C4.'};
+  let promotion = '';
+  if (i < tokens.length) {
+    if (['promote','promotes','promotion'].includes(tokens[i])) i++;
+    if (['to','as'].includes(tokens[i])) i++;
+    if (tokens[i] === 'a') i++;
+    promotion = VOICE_PROMOTIONS[tokens[i++]] || '';
+    if (!promotion) return {error:'Promotion must be queen, rook, bishop or knight.'};
+  }
+  if (i !== tokens.length) return {error:'More than one command or extra words. Say just one FROM-to-TO move.'};
+  if (from === to) return {error:'The starting and destination squares are the same. Please repeat or edit.'};
+  return {from,to,promotion};
+}
+// Voice is an opt-in input alongside mouse/keyboard, never a replacement for them.
+// Microphone consent, recognisers, previews and transcripts are NOT persisted.
+let voice = {serial:0,inputEpoch:0,phase:'idle',active:false,processing:false,
+  candidate:null,candidateSeq:0,promotionMoves:[],recognition:null,recorder:null,
+  whisper:null,ready:false,readyKey:'',timer:null,restartCount:0};
+const voiceKey = () => $('voice-backend').value + ':' + $('voice-language').value;
+const voiceAllowed = () => !game.isGameOver() && !computerTurn();
+const voiceBusy = () => voice.active || ['preparing','starting','transcribing'].includes(voice.phase);
+function voicePreview() {
+  const c=voice.candidate;
+  return c && voiceAllowed() && c.fen===game.fen() && c.revision===revision ? c : null;
+}
+function boardHints() {
+  const c=voicePreview();
+  return c ? [{...c.move,rank:1,voicePreview:true,needsPromotion:c.needsPromotion}] : (hintsVisible()?recommendations:[]);
+}
+function voiceMessage(message, kind='') {
+  $('voice-status').textContent=message;
+  $('voice-status').className='voice-status'+(kind?' '+kind:'');
+  $('voice-status').hidden=Boolean(voicePreview())&&kind==='ready';
+}
+function voiceMoveLabel(c=voicePreview()) {
+  if(!c)return '';
+  const m=c.move;
+  return m.from.toUpperCase()+' \u2192 '+m.to.toUpperCase()+
+    (c.needsPromotion?' (choose promotion)':m.promotion?' = '+names[m.promotion]:'');
+}
+function voiceIdleMessage(prefix='') {
+  if(!voice.active)return;
+  if(!voiceAllowed()) {voiceMessage(prefix+'Waiting for the computer. Listening resumes on your turn.');return;}
+  const c=voicePreview();
+  if(c) voiceMessage(prefix+'Preview '+voiceMoveLabel()+'. '+(c.needsPromotion?
+    'Say queen, rook, bishop or knight.':'Say "move" to play, or say another move to replace it.'),'ready');
+  else voiceMessage(prefix+'Listening. Say C two to C four; then wait for the green preview and say "move".','ready');
+}
+function voiceControls() {
+  const active=voiceBusy(),c=voicePreview();
+  $('voice-prepare').disabled=active;
+  $('voice-prepare').textContent=voice.ready&&voice.readyKey===voiceKey()?'Voice ready':'Prepare voice';
+  $('voice-start').disabled=active||game.isGameOver();
+  $('voice-stop').disabled=!active;
+  $('voice-cancel').disabled=!c&&!$('voice-text').value;
+  $('voice-backend').disabled=active;$('voice-language').disabled=active;
+  $('voice-text').disabled=voice.phase==='preparing';
+  $('voice-promotion').disabled=!voiceAllowed();
+  $('voice-play').hidden=!c;
+  $('voice-play').disabled=!c||c.needsPromotion||!voiceAllowed();
+  $('voice-status').hidden=Boolean(c)&&$('voice-status').classList.contains('ready');
+  $('voice-play').textContent=c?'Play '+voiceMoveLabel():'Play preview';
+  $('voice-mic').classList.toggle('listening',voice.active&&Boolean(voice.recognition||voice.recorder?.stream));
+  $('voice-live').textContent=voice.active?(voice.phase==='transcribing'?'Processing - wait':
+    !voiceAllowed()?'Waiting for computer':voice.phase==='starting'?'Starting microphone':'Listening'):voice.phase==='preparing'?'Preparing':'Microphone off';
+  $('voice-language-wrap').hidden=$('voice-backend').value!=='browser';
+  $('voice-pause-wrap').hidden=$('voice-backend').value!=='whisper';
+  $('voice-start').title='Optional: keep listening for coordinates and the confirmation word "move". Mouse moves always work.';
+  $('voice-preview-banner').hidden=!c;
+  $('voice-preview-banner').textContent=c?'Preview: '+voiceMoveLabel()+' \u2014 '+
+    (c.needsPromotion?'say the promotion piece.':'say "move" to play.') : '';
+  queueSize();
+}
+function clearVoiceCandidate() {
+  const changed=Boolean(voice.candidate);
+  voice.candidate=null;voice.promotionMoves=[];
+  $('voice-promotion-wrap').hidden=true;$('voice-promotion').value='';
+  if(changed)queueDraw();
+}
+function closeNativeVoice() {
+  const r=voice.recognition;voice.recognition=null;
+  if(r)try{r.abort();}catch(_){}
+}
+function cancelVoice(message='',clearText=true) {
+  voice.active=false;voice.serial++;voice.inputEpoch++;
+  clearTimeout(voice.timer);voice.timer=null;closeNativeVoice();
+  voice.recorder?.cancel();voice.recorder=null;
+  if(voice.phase==='preparing'||voice.processing) {
+    voice.whisper?.destroy();voice.whisper=null;voice.ready=false;
+  }
+  voice.processing=false;voice.phase='idle';clearVoiceCandidate();
+  if(clearText)$('voice-text').value='';
+  if(message)voiceMessage(message);
+  voiceControls();queueDraw();
+}
+function voiceContext() {
+  return {serial:voice.serial,epoch:voice.inputEpoch,revision,fen:game.fen(),
+    allowed:voiceAllowed(),candidateId:voicePreview()?.id||0,startedAt:performance.now()};
+}
+function voiceSessionValid(session) {
+  return session&&session.serial===voice.serial&&session.epoch===voice.inputEpoch&&
+    session.revision===revision&&session.fen===game.fen()&&session.allowed&&voiceAllowed()&&
+    document.visibilityState!=='hidden';
+}
+function syncHandsFree() {
+  if(!voice.active)return;
+  if(game.isGameOver()){cancelVoice('Game finished. Microphone off.');return;}
+  if(voice.processing){voiceControls();return;}
+  voice.phase=voiceAllowed()?'listening':'waiting';
+  if($('voice-backend').value==='browser'&&voiceAllowed()&&!voice.recognition&&voice.timer===null)
+    scheduleNativeVoice(180);
+  voiceIdleMessage();voiceControls();
+}
+// Called before the new search revision is created. Ordinary played moves keep
+// hands-free enabled; deliberate reset/undo/engine/seat changes stop it safely.
+function voicePositionChanged(keepListening=false) {
+  if(!keepListening||!voice.active) {
+    const hadInput=voiceBusy()||voice.candidate;
+    cancelVoice(hadInput?'Position or play settings changed. Microphone off; click-to-move is ready.':'');
+    return;
+  }
+  voice.inputEpoch++;clearVoiceCandidate();$('voice-text').value='';
+  voice.recorder?.reset();closeNativeVoice();clearTimeout(voice.timer);voice.timer=null;
+  queueMicrotask(syncHandsFree);
+}
+// A mouse selection or a typed correction takes priority over in-flight speech.
+// A late "move" result cannot act on a different mouse-selected position.
+function invalidateVoiceUtterance() {
+  voice.inputEpoch++;voice.recorder?.reset();
+  if(voice.active&&$('voice-backend').value==='browser') {
+    closeNativeVoice();clearTimeout(voice.timer);voice.timer=null;scheduleNativeVoice(180);
+  }
+}
+function clearVoicePreview(message='Preview cleared. Say another move, or click the board.') {
+  invalidateVoiceUtterance();clearVoiceCandidate();$('voice-text').value='';
+  voiceMessage(message);voiceControls();queueDraw();
+}
+function voiceMouseInteraction() {
+  const hadPreview=Boolean(voice.candidate);
+  invalidateVoiceUtterance();clearVoiceCandidate();$('voice-text').value='';
+  if(hadPreview)voiceMessage('Voice preview cleared. Your mouse selection takes priority.');
+  voiceControls();
+}
+function interpretVoice(text) {
+  const previous=voicePreview(),promotion=String(text).toLowerCase().trim().replace(/[.!?,]/g,'').replace(/^(?:promote\s+(?:to\s+)?|to\s+)/,'');
+  if(previous?.needsPromotion&&VOICE_PROMOTIONS[promotion])
+    text=previous.move.from+' '+previous.move.to+' '+VOICE_PROMOTIONS[promotion];
+  clearVoiceCandidate();
+  if(!voiceAllowed()){voiceMessage(computerTurn()?'Wait for your turn. No voice move was played.':'The game has finished.','error');voiceControls();return false;}
+  const parsed=parseSpokenMove(text);
+  if(parsed.error){voiceMessage(parsed.error+' No move is pending.','error');voiceControls();return false;}
+  const matches=legalMoves.filter(m=>parsed.castle?m.flags.includes(parsed.castle)&&m.piece==='k':
+    m.from===parsed.from&&m.to===parsed.to&&(!parsed.promotion||m.promotion===parsed.promotion));
+  if(!matches.length){voiceMessage('That move is not legal for '+colourName(game.turn())+'. No move is pending; please repeat.','error');voiceControls();return false;}
+  const needsPromotion=matches.length>1;
+  voice.candidate={move:matches[0],fen:game.fen(),revision,id:++voice.candidateSeq,
+    needsPromotion,painted:false,createdAt:performance.now()};
+  selected=null;
+  if(needsPromotion){voice.promotionMoves=matches;$('voice-promotion-wrap').hidden=false;}
+  voiceMessage('Preview '+voiceMoveLabel()+'. '+(needsPromotion?'Say queen, rook, bishop or knight.':
+    'Say "move" to play, or say another move to replace it.'),'ready');
+  voiceControls();queueDraw();return true;
+}
+function handleVoiceCommand(text,context) {
+  if(!voice.active)return false;
+  const command=String(text).toLowerCase().normalize('NFKC').trim().replace(/[.,!?;:]/g,'').replace(/\s+/g,' ');
+  if(command==='stop listening'){cancelVoice('Hands-free stopped. Microphone off; click-to-move is ready.');return true;}
+  if(!voiceSessionValid(context))return false;
+  $('voice-text').value=String(text).trim();
+  if(command==='cancel'){clearVoicePreview('Preview cancelled. Still listening for another move.');return true;}
+  if(command==='move')return playVoiceMove('voice',context);
+  return interpretVoice(String(text));
+}
+function playVoiceMove(source='button',context=null) {
+  const candidate=voicePreview();
+  if(!candidate){voiceMessage('No move is pending. Say the two squares first.','error');voiceControls();return false;}
+  if(candidate.needsPromotion){voiceMessage('First say queen, rook, bishop or knight, then say "move".','error');return false;}
+  // The user must have had a rendered preview BEFORE this confirmation utterance.
+  if(source==='voice'&&(!voiceSessionValid(context)||context.candidateId!==candidate.id||
+     !candidate.painted||context.startedAt<candidate.createdAt)) {
+    voiceMessage('Wait for the green preview, then say "move" as a separate command.','error');return false;
+  }
+  const m=candidate.move;
+  if(!performMove(m,'human')){clearVoicePreview('The move could not be played. Please repeat.');return false;}
+  voiceMessage('Played '+m.from.toUpperCase()+' \u2192 '+m.to.toUpperCase()+' ('+m.san+'). '+
+    (voice.active?(computerTurn()?'Waiting for the computer.':'Listening for the next move.'):'Click the board to continue.'),'ready');
+  voiceControls();return true;
+}
+
+// Use oral-exam's page-loaded runtime. Keep one model context per page:
+// stopping voice invalidates results without reallocating the WASM model.
+class LocalChessWhisper {
+  static shared = { loading:null, module:null, instance:0, busy:false, failed:false };
+  constructor(onStatus) {
+    this.onStatus=onStatus; this.ready=false; this.destroyed=false;
+  }
+  async load() {
+    if(this.destroyed)throw new Error('Speech operation cancelled.');
+    const shared=LocalChessWhisper.shared;
+    if(shared.failed)throw new Error('Whisper needs a page reload after its previous failure.');
+    if(!shared.loading) {
+      shared.loading=(async()=>{
+        const loader=window.WhisperAssetLoader;
+        if(!loader)throw new Error('Missing whisper-loader.js beside index.html.');
+        await loader.prepare({onStatus:message=>{
+          if(!this.destroyed)this.onStatus?.(message);
+        }});
+        const module=window.Module;
+        for(const name of ['init','set_audio','get_transcribed','get_status']) {
+          if(typeof module?.[name]!=='function')
+            throw new Error('Whisper runtime is missing '+name+'. Copy the working oral-exam stream.js.');
+        }
+        const instance=module.init(loader.MODEL_FS_NAME,'en');
+        if(!instance)throw new Error('Whisper could not initialise its speech model.');
+        shared.module=module;shared.instance=instance;
+      })().catch(error=>{shared.failed=true;throw error;});
+    }
+    await shared.loading;
+    if(this.destroyed)throw new Error('Speech operation cancelled.');
+    this.ready=true;
+  }
+  async transcribe(audio,id) {
+    const shared=LocalChessWhisper.shared;
+    if(!this.ready||this.destroyed)throw new Error('Whisper is not ready.');
+    if(shared.failed)throw new Error('Reload the page to restart Whisper.');
+    if(shared.busy)throw new Error('Whisper is finishing the previous command. Wait and start again.');
+    shared.busy=true;
+    const module=shared.module;
+    try {
+      module.get_transcribed(); // Discard any unread previous result.
+      const rc=module.set_audio(shared.instance,audio);
+      if(rc!==0)throw new Error('Whisper rejected microphone audio: '+rc);
+      const started=Date.now();let sawRunning=false,emptyWaitingSince=0;
+      while(Date.now()-started<120000) {
+        const text=String(module.get_transcribed()||'').trim();
+        const status=String(module.get_status()||'').toLowerCase();
+        if(text) {
+          if(this.destroyed)throw new Error('Speech operation cancelled.');
+          return text;
+        }
+        if(status.includes('running whisper'))sawRunning=true;
+        if(sawRunning&&status.includes('waiting for audio')) {
+          if(!emptyWaitingSince)emptyWaitingSince=Date.now();
+          if(Date.now()-emptyWaitingSince>500)return '';
+        } else emptyWaitingSince=0;
+        // Continue draining a cancelled job before permitting another set_audio.
+        await new Promise(resolve=>setTimeout(resolve,100));
+      }
+      shared.failed=true;
+      throw new Error('Whisper transcription timed out. Reload the page to restart voice.');
+    } finally {shared.busy=false;}
+  }
+  destroy() {
+    this.destroyed=true;this.ready=false;
+    // No worker is owned here. Retain the shared runtime/model until page unload.
+  }
+}
+async function prepareVoiceIsolation(stillCurrent) {
+  if (crossOriginIsolated) return true;
+  if (!navigator.serviceWorker) throw new Error('This browser cannot enable the local Whisper worker. Open HTTPS/localhost in a supported browser.');
+  const expected=new URL('voice-coi-serviceworker.js',location.href).href,scope=new URL('.',location.href).href;
+  const existing=await navigator.serviceWorker.getRegistration(scope);
+  const prior=existing?.active?.scriptURL || existing?.waiting?.scriptURL || existing?.installing?.scriptURL;
+  if (prior && prior !== expected) throw new Error('Another service worker already controls this app. Merge its isolation headers before using Whisper; this update will not replace it automatically.');
+  if(!stillCurrent())return false;
+  const registration=await navigator.serviceWorker.register(expected,{scope,updateViaCache:'none'});
+  if (!registration.active) await new Promise((resolve,reject)=>{
+    const w=registration.installing||registration.waiting;
+    if(!w){reject(new Error('Voice isolation worker did not install.'));return;}
+    const timer=setTimeout(()=>reject(new Error('Voice isolation worker did not activate. Reload and retry.')),15000);
+    const check=()=>{if(w.state==='activated'){clearTimeout(timer);resolve();}else if(w.state==='redundant'){clearTimeout(timer);reject(new Error('Voice isolation installation failed.'));}};
+    w.addEventListener('statechange',check);check();
+  });
+  if(!stillCurrent())return false;
+  const marker='chess-voice-isolation:'+scope;
+  if(sessionStorage.getItem(marker)==='reloaded') throw new Error('Whisper still lacks cross-origin isolation after reload. Open the site directly (not in an iframe) and check browser support.');
+  sessionStorage.setItem(marker,'reloaded');saveSession();
+  // Do not automatically start a microphone after reloading.
+  location.reload();return false;
+}
+async function prepareVoice() {
+  if (voiceBusy()) return false;
+  const id=++voice.serial,key=voiceKey();voice.phase='preparing';voice.ready=false;voiceControls();
+  try {
+    if (!isSecureContext) throw new Error('Microphone input requires HTTPS (GitHub Pages) or localhost.');
+    if ($('voice-backend').value==='whisper') {
+      voiceMessage('Preparing local Whisper. First use may need one saved-game reload.');
+      if (!await prepareVoiceIsolation(()=>id===voice.serial)) return false;
+      if(id!==voice.serial)return false;
+      const instance=voice.whisper || new LocalChessWhisper(message=>{if(id===voice.serial)voiceMessage(message);});voice.whisper=instance;
+      await instance.load();
+    } else {
+      const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+      if(!SR) throw new Error('Browser on-device speech recognition is unavailable. Select Whisper or type the move.');
+      const probe=new SR();
+      if(!('processLocally' in probe)||typeof SR.available!=='function') throw new Error('This browser cannot guarantee local speech recognition. Cloud recognition is disabled; select Whisper or type.');
+      const opts={langs:[$('voice-language').value],processLocally:true};
+      let available=await SR.available(opts);
+      if(id!==voice.serial)return false;
+      if(available==='downloadable') {
+        if(typeof SR.install!=='function') throw new Error('The local language pack is missing and this browser cannot install it.');
+        voiceMessage('Downloading the local language pack. No microphone is running.');
+        if(!await SR.install({langs:opts.langs})) throw new Error('Language-pack installation failed. Choose another English language or Whisper.');
+        available=await SR.available(opts);
+      }
+      if(available!=='available') throw new Error(available==='downloading'?'Language pack is still downloading. Retry Prepare voice when it finishes.':'No on-device pack for this language. Choose another English option or Whisper.');
+    }
+    if(id!==voice.serial)return false;
+    voice.ready=true;voice.readyKey=key;voice.phase='idle';voiceMessage('Voice ready. Start hands-free, say a move, then say "move" after the preview.','ready');voiceControls();return true;
+  } catch(error) {
+    if(id===voice.serial){voice.whisper?.destroy();voice.whisper=null;voice.ready=false;voice.phase='idle';voiceMessage(error.message||String(error),'error');voiceControls();}
+    return false;
+  }
+}
+// One microphone stream per hands-free session. Segment on a pause, then reuse
+// the stream. Idle audio is bounded to a short pre-roll and is never saved.
+class ChessVoiceRecorder {
+  constructor(){this.stream=null;this.context=null;this.source=null;this.node=null;this.closed=false;this.reset();}
+  reset(){this.frames=[];this.preRoll=[];this.preSamples=0;this.samples=0;this.voiced=0;this.quiet=0;this.speechSeen=false;this.utterance=null;}
+  async start(onUtterance,onError) {
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC||!navigator.mediaDevices?.getUserMedia)throw new Error('Microphone capture requires HTTPS/localhost and a supported browser.');
+    this.context=new AC();await this.context.resume();if(this.closed)return;
+    const stream=await navigator.mediaDevices.getUserMedia({video:false,audio:{channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+    if(this.closed){stream.getTracks().forEach(t=>t.stop());return;}this.stream=stream;
+    const processor=`class ChessCapture extends AudioWorkletProcessor {constructor(){super();this.buffer=new Float32Array(1024);this.offset=0;}process(inputs,outputs){for(const out of outputs)for(const ch of out)ch.fill(0);const input=inputs[0];if(input&&input.length){for(let j=0;j<input[0].length;j++){let x=0;for(const ch of input)x+=ch[j]||0;this.buffer[this.offset++]=x/input.length;if(this.offset===this.buffer.length){const a=this.buffer;this.buffer=new Float32Array(1024);this.offset=0;this.port.postMessage(a,[a.buffer]);}}}return true;}}registerProcessor('chess-capture',ChessCapture);`;
+    const url=URL.createObjectURL(new Blob([processor],{type:'text/javascript'}));
+    try{await this.context.audioWorklet.addModule(url);}finally{URL.revokeObjectURL(url);}
+    if(this.closed)return;
+    this.node=new AudioWorkletNode(this.context,'chess-capture',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1]});
+    this.node.onprocessorerror=()=>onError(new Error('Microphone processor stopped. Start hands-free again.'));
+    for(const track of stream.getAudioTracks())track.onended=()=>{if(!this.closed)onError(new Error('Microphone disconnected. Reconnect it and start hands-free again.'));};
+    this.node.port.onmessage=({data})=>this.consume(data,onUtterance,onError);
+    this.source=this.context.createMediaStreamSource(stream);this.source.connect(this.node);this.node.connect(this.context.destination);
+  }
+  consume(audio,onUtterance,onError) {
+    if(this.closed||!audio?.length)return;
+    if(!voice.active||voice.phase!=='listening'||!voiceAllowed()){this.reset();return;}
+    const rate=this.context.sampleRate,seconds=audio.length/rate;
+    let sum=0;for(const x of audio)sum+=x*x;const speaking=Math.sqrt(sum/audio.length)>.008;
+    if(!this.speechSeen) {
+      this.preRoll.push(audio);this.preSamples+=audio.length;
+      while(this.preRoll.length>1&&this.preSamples>rate*.24)this.preSamples-=this.preRoll.shift().length;
+      if(!speaking)return;
+      this.speechSeen=true;this.utterance=voiceContext();this.frames=this.preRoll;
+      this.samples=this.preSamples;this.preRoll=[];this.preSamples=0;this.voiced=seconds;return;
+    }
+    this.frames.push(audio);this.samples+=audio.length;
+    if(speaking){this.quiet=0;this.voiced+=seconds;}else this.quiet+=seconds;
+    const pause=Number($('voice-pause').value)/1000;
+    if(this.samples>rate*7) {
+      this.reset();clearVoiceCandidate();voiceMessage('Phrase too long. Say just the two squares, pause, then say "move" after the preview.','error');voiceControls();return;
+    }
+    if(this.quiet<pause)return;
+    const frames=this.frames,samples=this.samples,context=this.utterance,voiced=this.voiced;
+    this.reset();if(voiced<.10)return;
+    // Mark busy synchronously so the next audio frame cannot start a second job.
+    voice.phase='transcribing';voice.processing=true;voiceControls();
+    const pcm=new Float32Array(samples);let offset=0;for(const frame of frames){pcm.set(frame,offset);offset+=frame.length;}
+    Promise.resolve(onUtterance(pcm,rate,context)).catch(onError);
+  }
+  cancel(){this.closed=true;this.stream?.getTracks().forEach(t=>t.stop());this.stream=null;
+    try{this.source?.disconnect();this.node?.disconnect();}catch(_){}
+    this.context?.close().catch(()=>{});this.reset();}
+}
+async function resampleChessAudio(pcm,rate) {
+  if(pcm.length<rate*.15)throw new Error('Phrase too short. Say one clear command.');
+  const OC=window.OfflineAudioContext||window.webkitOfflineAudioContext;
+  const offline=new OC(1,Math.ceil(pcm.length*16000/rate),16000),buffer=offline.createBuffer(1,pcm.length,rate);
+  buffer.copyToChannel(pcm,0);const source=offline.createBufferSource();source.buffer=buffer;
+  source.connect(offline.destination);source.start();
+  return trimChessAudio((await offline.startRendering()).getChannelData(0));
+}
+
+function trimChessAudio(audio) {
+  const frame=320,levels=[];let maximum=0;
+  for(let i=0;i<audio.length;i+=frame){let sum=0;const n=Math.min(frame,audio.length-i);for(let j=0;j<n;j++)sum+=audio[i+j]*audio[i+j];const rms=Math.sqrt(sum/n);levels.push(rms);maximum=Math.max(maximum,rms);}
+  if(maximum<.003)throw new Error('No clear speech detected. Check the microphone and speak a little louder.');
+  const threshold=Math.max(.002,maximum*.10);let first=levels.findIndex(x=>x>=threshold),last=levels.length-1;while(last>=0&&levels[last]<threshold)last--;
+  const start=Math.max(0,first*frame-1600),end=Math.min(audio.length,(last+1)*frame+1600);
+  if(end-start>72000)throw new Error('The phrase is too long for this speech build. Say just the two squares in about four seconds.');
+  // stream.wasm uses the LAST five seconds. Never submit >5 seconds and silently
+  // lose the first coordinate. Pad the trimmed utterance instead of truncating it.
+  const out=new Float32Array(Math.max(16000,end-start+8000));out.set(audio.subarray(start,end),4000);return out;
+}
+function scheduleNativeVoice(delay=180) {
+  if(!voice.active||!voiceAllowed()||voice.recognition||voice.timer!==null)return;
+  const serial=voice.serial;
+  voice.timer=setTimeout(()=>{voice.timer=null;if(voice.active&&voice.serial===serial&&voiceAllowed())startNativeVoice();},delay);
+}
+function startNativeVoice() {
+  if(!voice.active||!voiceAllowed()||voice.recognition)return;
+  const serial=voice.serial;
+  try {
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition,r=new SR();
+    if(!('processLocally' in r))throw new Error('On-device speech is unavailable. Cloud fallback is disabled.');
+    r.processLocally=true;if(r.processLocally!==true)throw new Error('Local recognition could not be enforced.');
+    r.lang=$('voice-language').value;r.continuous=true;r.interimResults=true;r.maxAlternatives=1;
+    voice.recognition=r;voice.phase='starting';
+    if(window.SpeechRecognitionPhrase&&'phrases' in r)try{
+      r.phrases=[new SpeechRecognitionPhrase('move',4),new SpeechRecognitionPhrase('cancel',3),
+        ...Array.from('abcdefgh').flatMap(f=>Array.from({length:8},(_,i)=>new SpeechRecognitionPhrase(f.toUpperCase()+' '+(i+1),3)))];
+    }catch(_){}
+    const current=()=>voice.active&&voice.serial===serial&&voice.recognition===r;
+    const seen=new Set();let utterance=null,startedAt=performance.now();
+    r.onstart=()=>{if(!current()){try{r.abort();}catch(_){}return;}voice.phase='listening';startedAt=performance.now();voiceIdleMessage();voiceControls();};
+    r.onspeechstart=()=>{if(current())utterance=voiceContext();};
+    r.onresult=event=>{
+      if(!current())return;
+      const context=utterance||voiceContext(),finals=[];let interim='';
+      for(let i=event.resultIndex;i<event.results.length;i++) {
+        const item=event.results[i];if(item.isFinal&&!seen.has(i)){seen.add(i);finals.push(item[0].transcript);}
+        else if(!item.isFinal)interim+=item[0].transcript+' ';
+      }
+      if(finals.length) {
+        voice.restartCount=0;
+        // A coordinate command and confirmation in the same final batch have not
+        // been reviewed. Reject the batch; do not silently execute both.
+        if(finals.length>1){clearVoicePreview('Say one command at a time. Wait for the preview before saying "move".');}
+        else handleVoiceCommand(finals[0],context);
+        utterance=null;
+      } else if(interim&&document.activeElement!==$('voice-text')) {
+        if(!utterance)utterance=context;$('voice-text').value=interim.trim();
+      }
+    };
+    r.onerror=event=>{
+      if(!current())return;
+      if(event.error==='no-speech')return; // onend re-arms; silence does not clear the preview.
+      const messages={'not-allowed':'Microphone permission was denied. Allow it in the site settings.',
+        'audio-capture':'No usable microphone found.','language-not-supported':'Local language pack is unavailable. Prepare voice again.',
+        'network':'The local recogniser failed. Cloud fallback is disabled.','aborted':'Speech recognition stopped.'};
+      cancelVoice('',false);voiceMessage(messages[event.error]||'Local speech error: '+event.error,'error');
+    };
+    r.onend=()=>{
+      if(!current())return;voice.recognition=null;
+      if(performance.now()-startedAt<750)voice.restartCount++;else voice.restartCount=0;
+      if(voice.restartCount>=4){cancelVoice('The browser repeatedly stopped listening. Start hands-free again or use Whisper.');return;}
+      voice.phase=voiceAllowed()?'starting':'waiting';voiceControls();
+      scheduleNativeVoice(Math.min(1200,200+voice.restartCount*250));
+    };
+    r.start();voiceControls();
+  }catch(error){if(voice.serial===serial){cancelVoice('',false);voiceMessage(error.message||String(error),'error');}}
+}
+async function transcribeVoiceChunk(pcm,rate,context) {
+  const serial=voice.serial;
+  try {
+    if(!voiceSessionValid(context))return;
+    voiceMessage('Processing speech locally. Wait for Listening before your next command.');
+    const audio=await resampleChessAudio(pcm,rate);
+    if(!voiceSessionValid(context))return;
+    const text=await voice.whisper.transcribe(audio,context.epoch);
+    if(!voiceSessionValid(context))return;
+    if(text)handleVoiceCommand(text,context);
+    else {clearVoiceCandidate();voiceMessage('No clear command recognised. Please repeat.','error');}
+  }catch(error) {
+    if(voice.serial!==serial||!voice.active)return;
+    if(/too long|No clear speech|too short/.test(error.message||'')) {
+      clearVoiceCandidate();voiceMessage(error.message+' Say one command at a time.','error');
+    }else {cancelVoice('',false);voiceMessage(error.message||String(error),'error');}
+  }finally {
+    if(voice.serial===serial&&voice.active) {
+      voice.processing=false;voice.phase=voiceAllowed()?'listening':'waiting';voice.recorder?.reset();voiceControls();
+      // Do not replace an error or a just-recognised preview with generic text.
+    }
+  }
+}
+async function startVoice() {
+  if(voiceBusy()||game.isGameOver())return;
+  if(!voice.ready||voice.readyKey!==voiceKey()) {if(!await prepareVoice())return;}
+  if(document.visibilityState==='hidden'||game.isGameOver())return;
+  // Only this explicit user action starts or re-starts a hands-free session.
+  voice.active=true;voice.serial++;voice.inputEpoch++;voice.restartCount=0;
+  const serial=voice.serial;voice.phase='starting';voiceControls();
+  if($('voice-backend').value==='browser') {
+    if(voiceAllowed())startNativeVoice();else syncHandsFree();
+    return;
+  }
+  const recorder=new ChessVoiceRecorder();voice.recorder=recorder;
+  const fail=error=>{if(voice.serial===serial&&voice.active){cancelVoice('',false);voiceMessage(error.message||String(error),'error');}};
+  try {
+    await recorder.start(transcribeVoiceChunk,fail);
+    if(voice.serial!==serial||!voice.active){recorder.cancel();return;}
+    voice.phase=voiceAllowed()?'listening':'waiting';voiceIdleMessage();voiceControls();
+  }catch(error){recorder.cancel();fail(error);}
+}
+function stopVoice(){cancelVoice('Hands-free stopped. Microphone off; click-to-move is ready.');}
+$('voice-toggle').onclick=()=>{
+  const open=$('voice-panel').hidden;$('voice-panel').hidden=!open;
+  $('voice-toggle').setAttribute('aria-pressed',String(open));
+  if(!open)cancelVoice('Voice panel closed. Microphone off.');voiceControls();
+};
+$('voice-prepare').onclick=prepareVoice;$('voice-start').onclick=startVoice;$('voice-stop').onclick=stopVoice;
+$('voice-cancel').onclick=()=>clearVoicePreview();$('voice-play').onclick=()=>playVoiceMove();
+$('voice-text').oninput=()=>{
+  invalidateVoiceUtterance();
+  if($('voice-text').value.trim())interpretVoice($('voice-text').value);
+  else{clearVoiceCandidate();voiceControls();}
+};
+$('voice-text').onkeydown=event=>{
+  if(event.key==='Enter'&&voicePreview()){event.preventDefault();playVoiceMove();}
+};
+$('voice-promotion').onchange=()=>{
+  const m=voice.promotionMoves.find(x=>x.promotion===$('voice-promotion').value);
+  if(m){invalidateVoiceUtterance();interpretVoice(m.from+' '+m.to+' '+m.promotion);}
+};
+for(const id of ['voice-backend','voice-language'])$(id).onchange=()=>{
+  cancelVoice();voice.whisper?.destroy();voice.whisper=null;voice.ready=false;voice.readyKey='';
+  saveSession();voiceMessage('Prepare this local speech method or click Start hands-free.');voiceControls();
+};
+$('voice-pause').onchange=()=>{voice.recorder?.reset();saveSession();};
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')cancelVoice('Tab hidden. Microphone off and preview cleared.');});
+window.addEventListener('pagehide',()=>{cancelVoice();voice.whisper?.destroy();voice.whisper=null;voice.ready=false;});
+document.addEventListener('keydown',event=>{
+  if(event.key==='Escape'&&(voiceBusy()||voice.candidate)){event.preventDefault();cancelVoice('Cancelled. Microphone off.');}
+});
+
+// END VOICE INPUT
+
+$('model').onchange = () => {lastChoice = null; saveSession(); startEngine(); queueSize();};
+$('new').onclick = () => {
+  clearAutoplay(); game.reset(); gameSerial++; lastChoice = null;
+  evaluation = {value:0, text:'0.00', description:'Starting position.', known:false};
+  refreshPositionCache(); saveSession(); requestAnalysis();
+};
+$('undo').onclick = () => {
+  if (!moveHistory.length || (isPlay() && !moveHistory.some(m => m.color === humanColour()))) return;
+  clearAutoplay();
+  if (isPlay()) {
+    // Remove the computer reply (if any), then the user's last move. Never instantly replay an undone reply.
+    let removed;
+    do {removed = game.undo();} while (removed && removed.color !== humanColour());
+  } else game.undo();
+  lastChoice = null; evaluation.known = false;
+  refreshPositionCache(); saveSession(); requestAnalysis();
+};
+$('flip').onclick = () => {flipped = !flipped; saveSession(); requestAnalysis();};
+$('mode').onchange = () => {if (!isPlay()) {maiaEngine?.destroy(); maiaEngine = null; maiaError = '';} saveSession(); requestAnalysis(); queueSize();};
+$('hintsWhite').onchange = () => {saveSession(); queueDraw();};
+$('hintsBlack').onchange = () => {saveSession(); queueDraw();};
+$('talk').onchange = () => {saveSession(); queueDraw();};
+$('rating').onchange = () => {saveSession(); requestAnalysis();};
+$('allowBlunder').onchange = () => {saveSession(); if (isPlay()) requestAnalysis(); else queueDraw();};
+$('weighting').onchange = () => {saveSession(); if (!isMaia() && allowBlunders() && result?.complete && computerTurn()) scheduleComputerMove(); queueDraw();};
+$('think').onchange = () => {saveSession(); if (isPlay()) requestAnalysis();};
+$('engine-retry').onclick = startEngine;
+$('focus').onclick = () => {focusBoard = !focusBoard; applyFocus(); saveSession();};
+const fullscreenButton = $('fullscreen');
+fullscreenButton.hidden = !document.fullscreenEnabled || typeof document.documentElement.requestFullscreen !== 'function';
+fullscreenButton.onclick = async () => {
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else await document.documentElement.requestFullscreen();
+  } catch (error) { fullscreenButton.title = 'Full screen was blocked by the browser. You can still resize the window or use Focus board.'; }
+  queueSize();
+};
+document.addEventListener('fullscreenchange', () => {
+  const active = Boolean(document.fullscreenElement);
+  fullscreenButton.textContent = active ? 'Exit full screen' : 'Full screen';
+  fullscreenButton.setAttribute('aria-pressed', String(active));
+  queueSize();
+});
+window.addEventListener('resize', queueSize);
+window.visualViewport?.addEventListener('resize', queueSize);
+// Header wrapping, restored controls and status changes also affect the board budget.
+if (typeof ResizeObserver !== 'undefined') {
+  const observer = new ResizeObserver(queueSize);
+  observer.observe($('app-header'));
+  observer.observe($('layout'));
+}
+document.fonts?.ready.then(queueSize);
+// Save on each deliberate change, plus lifecycle fallback for mobile/tab closing.
+document.addEventListener('visibilitychange', () => {if (document.visibilityState === 'hidden' && !storageWarning) saveSession();});
+window.addEventListener('pagehide', () => {if (!storageWarning) saveSession(); clearAutoplay(); engine?.destroy(); maiaEngine?.destroy();});
+window.addEventListener('pageshow', event => {if (event.persisted) {queueSize(); startEngine();}});
+for (const [label, preset] of Object.entries(RATING_PRESETS)) {
+  const row = document.createElement('tr');
+  for (const text of [label, preset.depth, numberText(preset.nodes)]) {
+    const cell = document.createElement('td'); cell.textContent = text; row.appendChild(cell);
+  }
+  $('preset-rows').appendChild(row);
+}
+restoreSession(); applyFocus(); refreshPositionCache(); draw(); sizeBoard(); startEngine();
+})();
+</script>
 </body>
 </html>
